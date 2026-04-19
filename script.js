@@ -110,17 +110,19 @@ capaPuntos = L.layerGroup().addTo(map);
 let legend = L.control({position: "bottomright"});
 
 legend.onAdd = function () {
+    let div = L.DomUtil.create("div", "info legend");
+    div.style.backgroundColor = "white";
+    div.style.padding = "10px";
+    div.style.border = "1px solid #ccc";
 
-let div = L.DomUtil.create("div", "info legend");
-
-div.innerHTML =
-"<b>Cluster score</b><br>" +
-"<i style='background:blue'></i> 1<br>" +
-"<i style='background:purple'></i> 0.5<br>" +
-"<i style='background:red'></i> 0";
-
-return div;
-
+    div.innerHTML = `
+        <b>Escala de Recomendación</b><br>
+        <i style="background:#000080; width:15px; height:15px; display:inline-block"></i> 0.0 - 0.1 (Mejor)<br>
+        <i style="background:#87CEEB; width:15px; height:15px; display:inline-block"></i> 0.4 - 0.5<br>
+        <i style="background:#FFCCCC; width:15px; height:15px; display:inline-block"></i> 0.5 - 0.6<br>
+        <i style="background:#8B0000; width:15px; height:15px; display:inline-block"></i> 0.9 - 1.0 (Peor)
+    `;
+    return div;
 };
 
 legend.addTo(map);
@@ -144,42 +146,25 @@ return `hsl(${hue}, 100%, 50%)`;
 }
 
 // =============================
-function colorScore(score, minScore, maxScore){
+function colorScore(score, minScore, maxScore) {
+    // 1. Normalización: convertimos el score a un rango de 0 a 1
+    let x = (score - minScore) / (maxScore - minScore);
 
-// normalización 0–1
-let x = (score - minScore) / (maxScore - minScore);
+    // Evitar errores si maxScore y minScore son iguales
+    if (isNaN(x)) x = 0;
 
-// centrar en 0
-x = (x - 0.5) * 2;
-
-// limitar rango
-x = Math.max(-1, Math.min(1, x));
-
-let r, g, b;
-
-if (x < 0) {
-
-// AZUL OSCURO → AZUL CLARO (sin blanco)
-
-let t = (x + 1); // 0 → 1
-
-r = Math.floor(10 + 120 * t);   // 10 → 130
-g = Math.floor(40 + 160 * t);   // 40 → 200
-b = Math.floor(120 + 135 * t);  // 120 → 255
-
-} else {
-
-// AZUL MUY CLARO → ROJO
-
-let t = x; // 0 → 1
-
-r = Math.floor(130 + 125 * t);  // 130 → 255
-g = Math.floor(200 - 200 * t);  // 200 → 0
-b = Math.floor(255 - 255 * t);  // 255 → 0
-
-}
-
-return `rgb(${r},${g},${b})`;
+    // 2. Lógica de colores según tus rangos
+    if (x <= 0.1) return "#000080"; // Azul oscuro (Navy)
+    if (x <= 0.2) return "#0000FF"; // Azul puro
+    if (x <= 0.3) return "#4169E1"; // Royal Blue
+    if (x <= 0.4) return "#1E90FF"; // Dodger Blue
+    if (x <= 0.5) return "#87CEEB"; // Azul claro (Sky Blue)
+    
+    if (x <= 0.6) return "#FFCCCC"; // Rojo muy muy claro (Rosa pálido)
+    if (x <= 0.7) return "#FF9999"; // Rojo claro
+    if (x <= 0.8) return "#FF6666"; // Rojo intermedio
+    if (x <= 0.9) return "#FF0000"; // Rojo puro
+    return "#8B0000";               // Rojo oscuro (Dark Red)
 }
 
 // =============================
@@ -343,17 +328,19 @@ fillOpacity: 0.7
 let legend = L.control({position: "bottomright"});
 
 legend.onAdd = function () {
+    let div = L.DomUtil.create("div", "info legend");
+    div.style.backgroundColor = "white";
+    div.style.padding = "10px";
+    div.style.border = "1px solid #ccc";
 
-let div = L.DomUtil.create("div", "info legend");
-
-div.innerHTML +=
-"<b>Cluster score</b><br>" +
-"<i style='background:blue'></i> 1<br>" +
-"<i style='background:purple'></i> 0.5<br>" +
-"<i style='background:red'></i> 0";
-
-return div;
-
+    div.innerHTML = `
+        <b>Escala de Recomendación</b><br>
+        <i style="background:#000080; width:15px; height:15px; display:inline-block"></i> 0.0 - 0.1 (Mejor)<br>
+        <i style="background:#87CEEB; width:15px; height:15px; display:inline-block"></i> 0.4 - 0.5<br>
+        <i style="background:#FFCCCC; width:15px; height:15px; display:inline-block"></i> 0.5 - 0.6<br>
+        <i style="background:#8B0000; width:15px; height:15px; display:inline-block"></i> 0.9 - 1.0 (Peor)
+    `;
+    return div;
 };
 
 legend.addTo(map);
