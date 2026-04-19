@@ -146,30 +146,34 @@ return `hsl(${hue}, 100%, 50%)`;
 // =============================
 function colorScore(score, minScore, maxScore){
 
-// normalización 0–1
+// 1. normalización 0–1
 let ratio = (score - minScore) / (maxScore - minScore);
 
-// invertir si menor score = mejor
-ratio = 1 - ratio;
+// 2. centrar alrededor de 0.5
+ratio = ratio - 0.5;
 
+// 3. ampliar contraste
+ratio = ratio * 2;
 
-// azul → blanco → rojo
+// 4. limitar rango [-1, 1]
+ratio = Math.max(-1, Math.min(1, ratio));
 
 let r, g, b;
 
-if(ratio < 0.5){
+// azul → blanco → rojo
+if(ratio < 0){
 
 // azul → blanco
-let t = ratio * 2;
+let t = 1 + ratio; // [-1,0] → [0,1]
 
 r = Math.floor(255 * t);
 g = Math.floor(255 * t);
 b = 255;
 
-}else{
+} else {
 
 // blanco → rojo
-let t = (ratio - 0.5) * 2;
+let t = ratio; // [0,1]
 
 r = 255;
 g = Math.floor(255 * (1 - t));
@@ -178,7 +182,6 @@ b = Math.floor(255 * (1 - t));
 }
 
 return `rgb(${r},${g},${b})`;
-
 }
 
 // =============================
