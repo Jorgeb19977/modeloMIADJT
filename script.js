@@ -150,9 +150,6 @@ function colorScore(score, minScore, maxScore){
 
 let ratio = (score - minScore) / (maxScore - minScore);
 
-// invertir porque menor score = mejor
-
-ratio = 1 - ratio;
 
 
 // interpolación azul → rojo (coolwarm aproximado)
