@@ -2,45 +2,23 @@
 <html>
 
 <head>
-<title>Modelo recomendación vivienda</title>
+<title>Modelo recomendación vivienda Bogotá</title>
 </head>
 
 <body>
 
 <h2>Modelo recomendación vivienda Bogotá</h2>
 
-Seguridad:
-<input type="range" id="seguridad" min="0" max="10">
+<div id="variables"></div>
 
-<br><br>
-
-Transporte:
-<input type="range" id="transporte" min="0" max="10">
-
-<br><br>
+<br>
 
 <button onclick="calcular()">Calcular cluster recomendado</button>
 
 <h3 id="resultado"></h3>
 
-<script>
-
-function calcular() {
-
-let seguridad =
-document.getElementById("seguridad").value;
-
-let transporte =
-document.getElementById("transporte").value;
-
-let score = seguridad * 0.8 + transporte * 0.5;
-
-document.getElementById("resultado").innerHTML =
-"Score calculado: " + score;
-
-}
-
-</script>
+<script src="script.js"></script>
 
 </body>
+
 </html>
