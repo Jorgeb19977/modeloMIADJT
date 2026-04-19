@@ -113,21 +113,11 @@ legend.onAdd = function () {
 
 let div = L.DomUtil.create("div", "info legend");
 
-div.innerHTML = `
-<b>Cluster score</b><br>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:blue"></div> Bajo
-</div>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:white;border:1px solid #ccc"></div> Medio
-</div>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:red"></div> Alto
-</div>
-`;
+div.innerHTML =
+"<b>Cluster score</b><br>" +
+"<i style='background:blue'></i> 1<br>" +
+"<i style='background:purple'></i> 0.5<br>" +
+"<i style='background:red'></i> 0";
 
 return div;
 
@@ -170,14 +160,13 @@ ratio = Math.max(-1, Math.min(1, ratio));
 
 let r, g, b;
 
-// azul → blanco → rojo
 if(ratio < 0){
 
-// azul → blanco
+// azul → azul muy claro (NO blanco puro)
 let t = 1 + ratio; // [-1,0] → [0,1]
 
-r = Math.floor(255 * t);
-g = Math.floor(255 * t);
+r = Math.floor(180 + (75 * t));   // 180 → 255
+g = Math.floor(210 + (45 * t));   // 210 → 255
 b = 255;
 
 } else {
@@ -358,21 +347,11 @@ legend.onAdd = function () {
 
 let div = L.DomUtil.create("div", "info legend");
 
-div.innerHTML = `
-<b>Cluster score</b><br>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:blue"></div> Bajo
-</div>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:white;border:1px solid #ccc"></div> Medio
-</div>
-
-<div style="display:flex; align-items:center; gap:5px;">
-<div style="width:15px;height:15px;background:red"></div> Alto
-</div>
-`;
+div.innerHTML +=
+"<b>Cluster score</b><br>" +
+"<i style='background:blue'></i> 1<br>" +
+"<i style='background:purple'></i> 0.5<br>" +
+"<i style='background:red'></i> 0";
 
 return div;
 
