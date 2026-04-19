@@ -86,7 +86,23 @@ viviendas = data;
 // MAPA BASE BOGOTÁ
 // =============================
 
-let map = L.map('map').setView([4.65, -74.1], 11);
+let map;
+let capaPuntos;
+
+document.addEventListener("DOMContentLoaded", function () {
+
+map = L.map('map').setView([4.65, -74.1], 11);
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom: 18
+}
+).addTo(map);
+
+capaPuntos = L.layerGroup().addTo(map);
+
+});
 
 L.tileLayer(
 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
