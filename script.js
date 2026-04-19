@@ -112,17 +112,48 @@ capaPuntos = L.layerGroup().addTo(map);
 // COLORES AUTOMÁTICOS POR CLUSTER
 // =============================
 
-function colorCluster(cluster){
+function colorPorScore(scoreNormalizado){
 
-// escala azul → rojo según número de cluster
+// limitar valores entre 0 y 1
 
-let maxClusters = centroides.length - 1;
+scoreNormalizado = Math.max(0, Math.min(1, scoreNormalizado));
 
-let ratio = cluster / maxClusters;
+let hue;
+let lightness;
 
-let hue = (1 - ratio) * 240; // azul=240 rojo=0
+// de 0 a 0.5 → azul oscuro → claro
 
-return `hsl(${hue}, 100%, 50%)`;
+if(scoreNormalizado <= 0.5){
+
+let ratio = scoreNormalizado / 0.5;
+
+// azul = 240
+
+hue = 240;
+
+// oscuro → claro
+
+lightness = 25 + (ratio * 40);
+
+}
+
+// de 0.5 a 1 → claro → rojo oscuro
+
+else{
+
+let ratio = (scoreNormalizado - 0.5) / 0.5;
+
+// rojo = 0
+
+hue = 0;
+
+// claro → oscuro
+
+lightness = 65 - (ratio * 40);
+
+}
+
+return `hsl(${hue}, 100%, ${lightness}%)`;
 
 }
 
