@@ -79,6 +79,9 @@ fetch("data32GH.json")
 
 viviendas = data;
 
+console.log("Dataset cargado:", viviendas.length);
+console.log("Primer punto:", viviendas[0]);
+
 });
 
 
@@ -103,18 +106,6 @@ maxZoom: 18
 capaPuntos = L.layerGroup().addTo(map);
 
 });
-
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom: 18
-}
-).addTo(map);
-
-
-// CAPA PARA PUNTOS DINÁMICOS
-
-let capaPuntos = L.layerGroup().addTo(map);
 
 
 // =============================
@@ -149,6 +140,21 @@ return colores[cluster % colores.length];
 
 function calcular() {
 
+if (!map) {
+
+alert("Mapa aún cargando. Intenta nuevamente.");
+
+return;
+
+}
+
+if (viviendas.length === 0) {
+
+alert("Dataset aún no cargado");
+
+return;
+
+}
 
 // LIMPIAR MAPA
 
