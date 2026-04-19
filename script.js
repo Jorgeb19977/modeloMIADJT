@@ -113,11 +113,21 @@ legend.onAdd = function () {
 
 let div = L.DomUtil.create("div", "info legend");
 
-div.innerHTML =
-"<b>Cluster score</b><br>" +
-"<i style='background:blue'></i> 1<br>" +
-"<i style='background:purple'></i> 0.5<br>" +
-"<i style='background:red'></i> 0";
+div.innerHTML = `
+<b>Cluster score</b><br>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:blue"></div> Bajo
+</div>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:white;border:1px solid #ccc"></div> Medio
+</div>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:red"></div> Alto
+</div>
+`;
 
 return div;
 
@@ -348,11 +358,21 @@ legend.onAdd = function () {
 
 let div = L.DomUtil.create("div", "info legend");
 
-div.innerHTML +=
-"<b>Cluster score</b><br>" +
-"<i style='background:blue'></i> 1<br>" +
-"<i style='background:purple'></i> 0.5<br>" +
-"<i style='background:red'></i> 0";
+div.innerHTML = `
+<b>Cluster score</b><br>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:blue"></div> Bajo
+</div>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:white;border:1px solid #ccc"></div> Medio
+</div>
+
+<div style="display:flex; align-items:center; gap:5px;">
+<div style="width:15px;height:15px;background:red"></div> Alto
+</div>
+`;
 
 return div;
 
