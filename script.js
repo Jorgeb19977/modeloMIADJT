@@ -1,4 +1,6 @@
+// =============================
 // VARIABLES DEL MODELO
+// =============================
 
 const variables = [
 
@@ -21,7 +23,9 @@ const variables = [
 ];
 
 
+// =============================
 // CREAR SLIDERS AUTOMATICAMENTE
+// =============================
 
 const container = document.getElementById("variables");
 
@@ -44,7 +48,9 @@ Manual:
 });
 
 
+// =============================
 // CARGAR CENTROIDES
+// =============================
 
 let centroides = [];
 
@@ -59,12 +65,85 @@ centroides = data;
 });
 
 
-// FUNCION PRINCIPAL
+// =============================
+// CARGAR DATASET VIVIENDAS
+// =============================
+
+let viviendas = [];
+
+fetch("data32GH.json")
+
+.then(response => response.json())
+
+.then(data => {
+
+viviendas = data;
+
+});
+
+
+// =============================
+// MAPA BASE BOGOTÁ
+// =============================
+
+let map = L.map('map').setView([4.65, -74.1], 11);
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom: 18
+}
+).addTo(map);
+
+
+// CAPA PARA PUNTOS DINÁMICOS
+
+let capaPuntos = L.layerGroup().addTo(map);
+
+
+// =============================
+// COLORES AUTOMÁTICOS POR CLUSTER
+// =============================
+
+function colorCluster(cluster){
+
+const colores = [
+
+"red",
+"blue",
+"green",
+"purple",
+"orange",
+"brown",
+"black",
+"pink",
+"cyan",
+"yellow"
+
+];
+
+return colores[cluster % colores.length];
+
+}
+
+
+// =============================
+// FUNCION PRINCIPAL MODELO
+// =============================
 
 function calcular() {
 
-let user_weights = [];
 
+// LIMPIAR MAPA
+
+capaPuntos.clearLayers();
+
+
+// =============================
+// CAPTURAR PESOS USUARIO
+// =============================
+
+let user_weights = [];
 
 variables.forEach(variable => {
 
@@ -75,30 +154,24 @@ let manual_value =
 document.getElementById(variable + "_manual").value;
 
 
-// prioridad al manual si existe
-
 let valor = manual_value > 0 ? manual_value : slider_value;
 
-
-// dividir entre 1000
-
 valor = valor / 1000;
-
 
 user_weights.push(valor);
 
 });
 
 
-// CALCULO DE SCORES
+// =============================
+// CALCULAR SCORES POR CLUSTER
+// =============================
 
 let scores = [];
-
 
 centroides.forEach(cluster => {
 
 let suma = 0;
-
 
 variables.forEach((variable, index) => {
 
@@ -108,7 +181,6 @@ suma += user_weights[index] * Math.pow(centroide_valor, 2);
 
 });
 
-
 let score = Math.sqrt(suma);
 
 scores.push(score);
@@ -116,7 +188,9 @@ scores.push(score);
 });
 
 
-// ORDENAR CLUSTERS (MENOR SCORE = MEJOR)
+// =============================
+// ORDENAR CLUSTERS
+// =============================
 
 let ordenados = scores
 
@@ -125,7 +199,9 @@ let ordenados = scores
 .sort((a, b) => a.score - b.score);
 
 
-// MOSTRAR TOP 5
+// =============================
+// MOSTRAR RESULTADOS TEXTO
+// =============================
 
 let resultado = "Clusters recomendados:<br>";
 
@@ -145,7 +221,49 @@ ordenados[i].score.toFixed(4) +
 
 }
 
-
 document.getElementById("resultado").innerHTML = resultado;
+
+
+// =============================
+// CLUSTER MÁS RECOMENDADO
+// =============================
+
+let mejorCluster = ordenados[0].cluster;
+
+
+// =============================
+// GRAFICAR VIVIENDAS EN MAPA
+// =============================
+
+viviendas.forEach(punto => {
+
+let color = colorCluster(punto.Clusters);
+
+let tamaño = 4;
+
+
+// resaltar cluster recomendado
+
+if(punto.Clusters === mejorCluster){
+
+color = "gold";
+
+tamaño = 7;
+
+}
+
+
+L.circleMarker([punto.lat, punto.lon], {
+
+radius: tamaño,
+
+color: color,
+
+fillOpacity: 0.7
+
+}).addTo(capaPuntos);
+
+});
+
 
 }
