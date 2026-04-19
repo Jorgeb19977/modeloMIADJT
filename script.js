@@ -115,9 +115,9 @@ let div = L.DomUtil.create("div", "info legend");
 
 div.innerHTML =
 "<b>Cluster score</b><br>" +
-"<i style='background:blue'></i> Bajo<br>" +
-"<i style='background:purple'></i> Medio<br>" +
-"<i style='background:red'></i> Alto";
+"<i style='background:blue'></i> 1<br>" +
+"<i style='background:purple'></i> 0.5<br>" +
+"<i style='background:red'></i> 0";
 
 return div;
 
