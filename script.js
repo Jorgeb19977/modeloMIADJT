@@ -107,6 +107,23 @@ capaPuntos = L.layerGroup().addTo(map);
 
 });
 
+let legend = L.control({position: "bottomright"});
+
+legend.onAdd = function () {
+
+let div = L.DomUtil.create("div", "info legend");
+
+div.innerHTML =
+"<b>Cluster score</b><br>" +
+"<i style='background:blue'></i> Bajo<br>" +
+"<i style='background:purple'></i> Medio<br>" +
+"<i style='background:red'></i> Alto";
+
+return div;
+
+};
+
+legend.addTo(map);
 
 // =============================
 // COLORES AUTOMÁTICOS POR CLUSTER
@@ -288,7 +305,7 @@ minScore,
 maxScore
 );
 
-let tamaño = 0.5;
+let tamaño = 0.1;
 
 
 
