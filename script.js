@@ -112,51 +112,43 @@ capaPuntos = L.layerGroup().addTo(map);
 // COLORES AUTOMÁTICOS POR CLUSTER
 // =============================
 
-function colorPorScore(scoreNormalizado){
+function colorCluster(cluster){
 
-// limitar valores entre 0 y 1
+// escala azul → rojo según número de cluster
 
-scoreNormalizado = Math.max(0, Math.min(1, scoreNormalizado));
+let maxClusters = centroides.length - 1;
 
-let hue;
-let lightness;
+let ratio = cluster / maxClusters;
 
-// de 0 a 0.5 → azul oscuro → claro
+let hue = (1 - ratio) * 240; // azul=240 rojo=0
 
-if(scoreNormalizado <= 0.5){
-
-let ratio = scoreNormalizado / 0.5;
-
-// azul = 240
-
-hue = 240;
-
-// oscuro → claro
-
-lightness = 25 + (ratio * 40);
+return `hsl(${hue}, 100%, 50%)`;
 
 }
 
-// de 0.5 a 1 → claro → rojo oscuro
+// =============================
+function colorScore(score, minScore, maxScore){
 
-else{
+// normalizar 0–1
 
-let ratio = (scoreNormalizado - 0.5) / 0.5;
+let ratio = (score - minScore) / (maxScore - minScore);
 
-// rojo = 0
+// invertir porque menor score = mejor
 
-hue = 0;
+ratio = 1 - ratio;
 
-// claro → oscuro
 
-lightness = 65 - (ratio * 40);
+// interpolación azul → rojo (coolwarm aproximado)
+
+let r = Math.floor(255 * ratio);
+
+let g = Math.floor(100 * (1 - Math.abs(ratio - 0.5) * 2));
+
+let b = Math.floor(255 * (1 - ratio));
+
+return `rgb(${r},${g},${b})`;
 
 }
-
-return `hsl(${hue}, 100%, ${lightness}%)`;
-
-}
-
 
 // =============================
 // FUNCION PRINCIPAL MODELO
@@ -215,6 +207,8 @@ user_weights.push(valor);
 
 let scores = [];
 
+
+
 centroides.forEach(cluster => {
 
 let suma = 0;
@@ -233,6 +227,9 @@ scores.push(score);
 
 });
 
+
+let minScore = Math.min(...scores);
+let maxScore = Math.max(...scores);
 
 // =============================
 // ORDENAR CLUSTERS
@@ -283,7 +280,13 @@ let mejorCluster = ordenados[0].cluster;
 
 viviendas.forEach(punto => {
 
-let color = colorCluster(punto.Clusters);
+let scoreCluster = scores[punto.Clusters];
+
+let color = colorScore(
+scoreCluster,
+minScore,
+maxScore
+);
 
 let tamaño = 4;
 
