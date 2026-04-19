@@ -288,18 +288,9 @@ minScore,
 maxScore
 );
 
-let tamaño = 2;
+let tamaño = 0.5;
 
 
-// resaltar cluster recomendado
-
-if(punto.Clusters === mejorCluster){
-
-color = "gold";
-
-tamaño = 7;
-
-}
 
 
 L.circleMarker([punto.lat, punto.lon], {
@@ -313,6 +304,27 @@ fillOpacity: 0.7
 }).addTo(capaPuntos);
 
 });
+
+// =============================
+// leyenda
+// =============================
+let legend = L.control({position: "bottomright"});
+
+legend.onAdd = function () {
+
+let div = L.DomUtil.create("div", "info legend");
+
+div.innerHTML +=
+"<b>Cluster score</b><br>" +
+"<i style='background:blue'></i> Bajo<br>" +
+"<i style='background:purple'></i> Medio<br>" +
+"<i style='background:red'></i> Alto";
+
+return div;
+
+};
+
+legend.addTo(map);
 
 
 }
