@@ -146,37 +146,36 @@ return `hsl(${hue}, 100%, 50%)`;
 // =============================
 function colorScore(score, minScore, maxScore){
 
-// 1. normalización 0–1
-let ratio = (score - minScore) / (maxScore - minScore);
+// normalización 0–1
+let x = (score - minScore) / (maxScore - minScore);
 
-// 2. centrar alrededor de 0.5
-ratio = ratio - 0.5;
+// centrar en 0
+x = (x - 0.5) * 2;
 
-// 3. ampliar contraste
-ratio = ratio * 2;
-
-// 4. limitar rango [-1, 1]
-ratio = Math.max(-1, Math.min(1, ratio));
+// limitar rango
+x = Math.max(-1, Math.min(1, x));
 
 let r, g, b;
 
-if(ratio < 0){
+if (x < 0) {
 
-// azul → azul muy claro (NO blanco puro)
-let t = 1 + ratio; // [-1,0] → [0,1]
+// AZUL OSCURO → AZUL CLARO (sin blanco)
 
-r = Math.floor(180 + (75 * t));   // 180 → 255
-g = Math.floor(210 + (45 * t));   // 210 → 255
-b = 255;
+let t = (x + 1); // 0 → 1
+
+r = Math.floor(10 + 120 * t);   // 10 → 130
+g = Math.floor(40 + 160 * t);   // 40 → 200
+b = Math.floor(120 + 135 * t);  // 120 → 255
 
 } else {
 
-// blanco → rojo
-let t = ratio; // [0,1]
+// AZUL MUY CLARO → ROJO
 
-r = 255;
-g = Math.floor(255 * (1 - t));
-b = Math.floor(255 * (1 - t));
+let t = x; // 0 → 1
+
+r = Math.floor(130 + 125 * t);  // 130 → 255
+g = Math.floor(200 - 200 * t);  // 200 → 0
+b = Math.floor(255 - 255 * t);  // 255 → 0
 
 }
 
