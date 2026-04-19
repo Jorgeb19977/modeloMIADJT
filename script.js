@@ -146,19 +146,36 @@ return `hsl(${hue}, 100%, 50%)`;
 // =============================
 function colorScore(score, minScore, maxScore){
 
-// normalizar 0–1
-
+// normalización 0–1
 let ratio = (score - minScore) / (maxScore - minScore);
 
+// invertir si menor score = mejor
+ratio = 1 - ratio;
 
 
-// interpolación azul → rojo (coolwarm aproximado)
+// azul → blanco → rojo
 
-let r = Math.floor(255 * ratio);
+let r, g, b;
 
-let g = Math.floor(100 * (1 - Math.abs(ratio - 0.5) * 2));
+if(ratio < 0.5){
 
-let b = Math.floor(255 * (1 - ratio));
+// azul → blanco
+let t = ratio * 2;
+
+r = Math.floor(255 * t);
+g = Math.floor(255 * t);
+b = 255;
+
+}else{
+
+// blanco → rojo
+let t = (ratio - 0.5) * 2;
+
+r = 255;
+g = Math.floor(255 * (1 - t));
+b = Math.floor(255 * (1 - t));
+
+}
 
 return `rgb(${r},${g},${b})`;
 
