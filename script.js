@@ -114,22 +114,15 @@ capaPuntos = L.layerGroup().addTo(map);
 
 function colorCluster(cluster){
 
-const colores = [
+// escala azul → rojo según número de cluster
 
-"red",
-"blue",
-"green",
-"purple",
-"orange",
-"brown",
-"black",
-"pink",
-"cyan",
-"yellow"
+let maxClusters = centroides.length - 1;
 
-];
+let ratio = cluster / maxClusters;
 
-return colores[cluster % colores.length];
+let hue = (1 - ratio) * 240; // azul=240 rojo=0
+
+return `hsl(${hue}, 100%, 50%)`;
 
 }
 
