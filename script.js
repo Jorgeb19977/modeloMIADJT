@@ -288,7 +288,7 @@ minScore,
 maxScore
 );
 
-let tamaño = 4;
+let tamaño = 2;
 
 
 // resaltar cluster recomendado
