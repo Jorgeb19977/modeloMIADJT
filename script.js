@@ -90,34 +90,63 @@ function calcular() {
 
     capaPuntos.clearLayers();
 
-    // Capturar pesos
+    // --- PARTE 1: CAPTURAR PESOS (Lo que ya tenías) ---
     let user_weights = variables.map(v => {
         let s = document.getElementById(v + "_slider").value;
         let m = document.getElementById(v + "_manual").value;
         return (m > 0 ? m : s) / 1000;
     });
 
-    // Calcular Scores
-    let scores = centroides.map(cluster => {
+    // --- PARTE 2: LÓGICA ECONÓMICA (Nueva) ---
+    const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
+    const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
+    const gastos = parseFloat(document.getElementById("gastos").value) || 0;
+
+    // Tu fórmula de Python: Ca = (Ingresos - Ahorros - Gastos) * 0.733
+    // Nota: Revisa si en Python restabas ahorros o si los ahorros suman a la capacidad.
+    // Según tu fórmula:
+    const Ca = (ingresos - ahorros - gastos) * 0.733;
+
+    // --- PARTE 3: CALCULAR SCORES POR CLUSTER ---
+    let scoresCluster = centroides.map(cluster => {
         let suma = variables.reduce((acc, v, i) => acc + (user_weights[i] * Math.pow(cluster[v], 2)), 0);
         return Math.sqrt(suma);
     });
 
-    let minScore = Math.min(...scores);
-    let maxScore = Math.max(...scores);
+    let minScore = Math.min(...scoresCluster);
+    let maxScore = Math.max(...scoresCluster);
 
-    // Resultados en texto
-    let ordenados = scores.map((s, i) => ({cluster: i, score: s})).sort((a, b) => a.score - b.score);
-    document.getElementById("resultado").innerHTML = "<b>Mejores Clusters:</b><br>" + 
-        ordenados.slice(0, 5).map(o => `Cluster ${o.cluster} | Score: ${o.score.toFixed(4)}`).join("<br>");
-
-    // Pintar Mapa
+    // --- PARTE 4: PINTAR VIVIENDAS + SCORE ECONÓMICO ---
     viviendas.forEach(p => {
+        // 1. Score del Cluster (Normalizado 0-1)
+        let sClusterNorm = (scoresCluster[p.Clusters] - minScore) / (maxScore - minScore);
+        if (isNaN(sClusterNorm)) sClusterNorm = 0;
+
+        // 2. Score Económico (Basado en tu fórmula de Python)
+        // data32["Score E"] = (data32["Precio"] - Ca) / Ca
+        let scoreE = Ca !== 0 ? (p.Precio - Ca) / Ca : 0;
+        let scoreEAbsoluto = Math.abs(scoreE);
+
+        // 3. Score Final Combinado (Opcional: puedes promediarlos o usar uno para color y otro para tamaño)
+        // Por ahora, mantendremos el color basado en el Score de Cluster como pediste antes
+        let colorPunto = colorScore(scoresCluster[p.Clusters], minScore, maxScore);
+
         L.circleMarker([p.lat, p.lon], {
-            radius: 2, // Subí un poco el radio para que se vea
-            color: colorScore(scores[p.Clusters], minScore, maxScore),
-            fillOpacity: 0.7,
-            stroke: false
-        }).addTo(capaPuntos);
+            radius: 3, 
+            color: colorPunto,
+            fillOpacity: 0.8,
+            stroke: true,
+            weight: 1
+        }).bindPopup(`
+            <b>Información de Vivienda</b><br>
+            Precio: $${p.Precio.toLocaleString()}<br>
+            Capacidad: $${Ca.toFixed(2)}<br>
+            <b>Score Económico:</b> ${scoreEAbsoluto.toFixed(4)}<br>
+            <b>Score Cluster:</b> ${scoresCluster[p.Clusters].toFixed(4)}
+        `).addTo(capaPuntos);
     });
+
+    // Actualizar resultados de texto (Top 5)
+    let ordenados = scoresCluster.map((s, i) => ({cluster: i, score: s})).sort((a, b) => a.score - b.score);
+    document.getElementById("resultado").innerHTML = "<b>Análisis Completado</b><br>Capacidad Calculada: $" + Ca.toFixed(2);
 }
