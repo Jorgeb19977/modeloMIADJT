@@ -160,13 +160,26 @@ function calcular() {
         }
     });
 
-    // F. RENDERIZAR TABLAS
+    // F. RENDERIZAR TABLAS (Actualizado para permitir clics)
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#eee;"><th>Cluster</th><th>Puntos</th><th>Score Cluster</th><th>Econ. Prom</th></tr>`;
+                <tr style="background:#eee;">
+                    <th>Cluster (Clic para filtrar Mapa 2)</th>
+                    <th>Puntos</th>
+                    <th>Score Cluster</th>
+                    <th>Econ. Prom</th>
+                </tr>`;
+    
     top10.forEach(c => {
-        h1 += `<tr><td>${c.id}</td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
+        // Añadimos 'onclick' y un estilo de cursor para que parezca un botón
+        h1 += `
+            <tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'">
+                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
+                <td>${c.puntos}</td>
+                <td>${c.scoreCluster.toFixed(4)}</td>
+                <td>${c.scoreEProm.toFixed(4)}</td>
+            </tr>`;
     });
-    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
+    document.getElementById("tabla-clusters").innerHTML = h1 + `</table><p><small><i>* Haz clic en una fila de la tabla para ver solo ese cluster en el Mapa 2.</i></small></p>`;
 
     let mejorClusterId = top10[0].id;
     let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
@@ -181,4 +194,38 @@ function calcular() {
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
     document.getElementById("resultado").innerText = "Cálculo completado. Ca: $" + Ca.toLocaleString();
+}
+
+// =============================
+// 5. NUEVA FUNCIÓN: FILTRAR MAPA 2
+// =============================
+function filtrarMapa2(clusterId) {
+    // 1. Limpiar el Mapa 2
+    capaPuntos2.clearLayers();
+
+    // 2. Filtrar solo las viviendas de ese cluster
+    const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
+
+    // 3. Dibujar los puntos en el Mapa 2
+    vFiltradas.forEach(p => {
+        L.circleMarker([p.lat, p.lon], {
+            radius: 5,         // Un poco más grande para resaltar
+            color: "gold",     // Color llamativo
+            fillOpacity: 0.9,
+            weight: 2,
+            stroke: true
+        }).bindPopup(`
+            <b>Cluster Seleccionado: ${clusterId}</b><br>
+            Precio: $${p.Precio.toLocaleString()}<br>
+            Ubicación: ${p.lat}, ${p.lon}
+        `).addTo(capaPuntos2);
+    });
+
+    // 4. Auto-zoom: Ajustar la cámara para ver todos los puntos del cluster
+    if (vFiltradas.length > 0) {
+        const grupo = new L.featureGroup(capaPuntos2.getLayers());
+        map2.fitBounds(grupo.getBounds(), { padding: [20, 20] });
+    } else {
+        alert("No hay viviendas registradas en este cluster.");
+    }
 }
