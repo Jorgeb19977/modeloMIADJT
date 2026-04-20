@@ -17,37 +17,42 @@ let map, map2, capaPuntos, capaPuntos2;
 // 2. INICIALIZACIÓN
 // =============================
 document.addEventListener("DOMContentLoaded", function () {
-    // Mapa 1
+    // Inicializar Mapas
     map = L.map('map').setView([4.65, -74.1], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
 
-    // Mapa 2
     map2 = L.map('map2').setView([4.65, -74.1], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
     capaPuntos2 = L.layerGroup().addTo(map2);
 
-    // Crear Sliders
+    // Crear Sliders en el HTML
     const container = document.getElementById("variables");
-    variables.forEach(v => {
-        container.innerHTML += `
-            <label><b>${v}</b></label><br>
-            Slider: <input type="range" id="${v}_slider" min="0" max="1000" value="0">
-            Manual: <input type="number" id="${v}_manual" value="0"><br><br>
-        `;
-    });
+    if (container) {
+        variables.forEach(v => {
+            container.innerHTML += `
+                <div style="margin-bottom:10px;">
+                    <label><b>${v}</b></label><br>
+                    Slider: <input type="range" id="${v}_slider" min="0" max="1000" value="0" style="width:150px">
+                    Manual: <input type="number" id="${v}_manual" value="0" style="width:60px">
+                </div>`;
+        });
+    }
 
-    // Cargar Datos
+    // Cargar Datos JSON
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
     ]).then(([dataC, dataV]) => {
         centroides = dataC;
         viviendas = dataV;
-        console.log("Datos cargados: ", viviendas.length, "viviendas.");
-    }).catch(err => console.error("Error cargando JSON:", err));
-
-    crearLeyenda();
+        console.log("Datos cargados correctamente");
+        const res = document.getElementById("resultado");
+        if(res) res.innerText = "Datos listos. Ingresa tus valores y haz clic en Calcular.";
+    }).catch(err => {
+        console.error("Error cargando archivos:", err);
+        alert("Error al cargar los archivos JSON. Revisa la consola.");
+    });
 });
 
 // =============================
@@ -68,112 +73,99 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-function crearLeyenda() {
-    let legend = L.control({position: "bottomright"});
-    legend.onAdd = function () {
-        let div = L.DomUtil.create("div", "info legend");
-        div.style.cssText = "background:white; padding:10px; border:1px solid #ccc; line-height:1.5em;";
-        div.innerHTML = `
-            <b>Escala Score</b><br>
-            <i style="background:#000080; width:12px; height:12px; display:inline-block"></i> 0.0 - 0.1 (Mejor)<br>
-            <i style="background:#8B0000; width:12px; height:12px; display:inline-block"></i> 0.9 - 1.0 (Peor)
-        `;
-        return div;
-    };
-    legend.addTo(map);
-}
-
 // =============================
 // 4. LÓGICA PRINCIPAL
 // =============================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) {
-        alert("Los datos aún no han cargado.");
+        alert("Los datos aún no están listos.");
         return;
     }
 
-    // A. Capturar Pesos del Usuario
-    let user_weights = variables.map(v => {
-        let s = document.getElementById(v + "_slider").value;
-        let m = document.getElementById(v + "_manual").value;
-        return (parseFloat(m) > 0 ? parseFloat(m) : parseFloat(s)) / 1000;
+    // A. CAPTURAR PESOS (Aquí es donde estaba el error anterior)
+    const current_weights = variables.map(v => {
+        const sVal = document.getElementById(v + "_slider").value;
+        const mVal = document.getElementById(v + "_manual").value;
+        return (parseFloat(mVal) > 0 ? parseFloat(mVal) : parseFloat(sVal)) / 1000;
     });
 
-    // B. Capturar Datos Económicos
+    // B. CAPTURAR DATOS ECONÓMICOS
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // C. Analizar Clusters
+    // C. CALCULAR SCORES POR CLUSTER
     let infoClusters = centroides.map((cluster, index) => {
-        let suma = variables.reduce((acc, v, i) => acc + (user_weights[i] * Math.pow(cluster[v], 2)), 0);
-        let sCluster = Math.sqrt(suma);
+        // Usamos current_weights aquí adentro
+        let suma = variables.reduce((acc, v, i) => {
+            let valCentroide = cluster[v] || 0;
+            return acc + (current_weights[i] * Math.pow(valCentroide, 2));
+        }, 0);
         
+        let sCluster = Math.sqrt(suma);
         let vEnCluster = viviendas.filter(v => v.Clusters === index);
-        let totalScoreE = vEnCluster.reduce((acc, v) => acc + (Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0), 0);
+        
+        let totalScoreE = vEnCluster.reduce((acc, v) => {
+            let sE = Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0;
+            return acc + sE;
+        }, 0);
 
         return {
             id: index,
             scoreCluster: sCluster,
-            cantidadPuntos: vEnCluster.length,
-            scoreE_Promedio: vEnCluster.length > 0 ? (totalScoreE / vEnCluster.length) : 999
+            puntos: vEnCluster.length,
+            scoreEProm: vEnCluster.length > 0 ? (totalScoreE / vEnCluster.length) : 0
         };
     });
 
-    // D. Obtener Top 10
-    let top10Clusters = [...infoClusters]
-        .sort((a, b) => a.scoreCluster - b.scoreCluster)
-        .slice(0, 10);
+    // D. ORDENAR TOP 10
+    let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
 
-    // E. Renderizar Tabla 1
-    let htmlTabla1 = `<table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
-        <tr style="background:#eee;"><th>Cluster</th><th>Puntos</th><th>Score Cluster</th><th>Score Econ. Prom</th></tr>`;
-    top10Clusters.forEach(c => {
-        htmlTabla1 += `<tr><td>${c.id}</td><td>${c.cantidadPuntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreE_Promedio.toFixed(4)}</td></tr>`;
-    });
-    document.getElementById("tabla-clusters").innerHTML = htmlTabla1 + `</table>`;
-
-    // F. Actualizar Mapas
+    // E. LIMPIAR Y PINTAR MAPAS
     capaPuntos.clearLayers();
     capaPuntos2.clearLayers();
 
-    let idsTop10 = top10Clusters.map(c => c.id);
-    let minS = top10Clusters[0].scoreCluster;
-    let maxS = top10Clusters[top10Clusters.length - 1].scoreCluster;
+    const minS = top10[0].scoreCluster;
+    const maxS = top10[top10.length - 1].scoreCluster;
+    const idsTop10 = top10.map(c => c.id);
 
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
         let col = colorScore(sc, minS, maxS);
 
-        // Mapa 1: Todas las viviendas
-        L.circleMarker([p.lat, p.lon], { radius: 2, color: col, fillOpacity: 0.6 }).addTo(capaPuntos);
+        // Mapa 1: General
+        L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
 
-        // Mapa 2: Solo Top 10 clusters
+        // Mapa 2: Top 10
         if (idsTop10.includes(p.Clusters)) {
             L.circleMarker([p.lat, p.lon], {
                 radius: 3,
-                color: p.Clusters === top10Clusters[0].id ? "gold" : "blue",
-                fillOpacity: 0.7,
-                weight: 1
+                color: p.Clusters === top10[0].id ? "gold" : "blue",
+                fillOpacity: 0.7
             }).addTo(capaPuntos2);
         }
     });
 
-    // G. Tabla 2: Top 5 viviendas del mejor cluster
-    let mejorClusterId = top10Clusters[0].id;
-    let vMejorCluster = viviendas
-        .filter(v => v.Clusters === mejorClusterId)
-        .map(v => ({ ...v, sEAbs: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 999 }))
-        .sort((a, b) => a.sEAbs - b.sEAbs)
-        .slice(0, 5);
-
-    let htmlTabla2 = `<table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
-        <tr style="background:#ffd700;"><th>Latitud</th><th>Longitud</th><th>Precio</th><th>Score Económico Abs.</th></tr>`;
-    vMejorCluster.forEach(v => {
-        htmlTabla2 += `<tr><td>${v.lat}</td><td>${v.lon}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sEAbs.toFixed(4)}</td></tr>`;
+    // F. RENDERIZAR TABLAS
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;">
+                <tr style="background:#eee;"><th>Cluster</th><th>Puntos</th><th>Score Cluster</th><th>Econ. Prom</th></tr>`;
+    top10.forEach(c => {
+        h1 += `<tr><td>${c.id}</td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
-    document.getElementById("tabla-viviendas").innerHTML = htmlTabla2 + `</table>`;
+    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 
-    document.getElementById("resultado").innerHTML = "Cálculo finalizado. Capacidad adquisitiva (Ca): $" + Ca.toLocaleString();
+    let mejorClusterId = top10[0].id;
+    let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
+        .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
+        .sort((a, b) => a.sE - b.sE).slice(0, 5);
+
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
+                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th></tr>`;
+    vMejor.forEach(v => {
+        h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`;
+    });
+    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
+
+    document.getElementById("resultado").innerText = "Cálculo completado. Ca: $" + Ca.toLocaleString();
 }
