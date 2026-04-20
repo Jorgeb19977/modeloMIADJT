@@ -122,27 +122,40 @@ function calcular() {
     // D. ORDENAR TOP 10
     let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
 
+    // --- NUEVO: Necesitamos el min y max GLOBAL para que los colores funcionen en todo el mapa ---
+    const todosLosScores = infoClusters.map(c => c.scoreCluster);
+    const minGlobal = Math.min(...todosLosScores);
+    const maxGlobal = Math.max(...todosLosScores);
+
     // E. LIMPIAR Y PINTAR MAPAS
     capaPuntos.clearLayers();
     capaPuntos2.clearLayers();
 
-    const minS = top10[0].scoreCluster;
-    const maxS = top10[top10.length - 1].scoreCluster;
     const idsTop10 = top10.map(c => c.id);
 
     viviendas.forEach(p => {
+        // Obtenemos el score del cluster al que pertenece este punto
         let sc = infoClusters[p.Clusters].scoreCluster;
-        let col = colorScore(sc, minS, maxS);
+        
+        // Mapa 1: Usamos la escala de azul a rojo con el rango GLOBAL
+        let col = colorScore(sc, minGlobal, maxGlobal);
 
-        // Mapa 1: General
-        L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
+        L.circleMarker([p.lat, p.lon], { 
+            radius: 2, 
+            color: col, 
+            stroke: false, 
+            fillOpacity: 0.6 
+        }).addTo(capaPuntos);
 
-        // Mapa 2: Top 10
+        // Mapa 2: Solo los 10 mejores clusters
         if (idsTop10.includes(p.Clusters)) {
             L.circleMarker([p.lat, p.lon], {
                 radius: 3,
-                color: p.Clusters === top10[0].id ? "gold" : "blue",
-                fillOpacity: 0.7
+                // El mejor de todos en Dorado, el resto del top 10 en Azul para resaltar
+                color: p.Clusters === top10[0].id ? "gold" : "#0000FF", 
+                fillOpacity: 0.8,
+                weight: 1,
+                stroke: true
             }).addTo(capaPuntos2);
         }
     });
