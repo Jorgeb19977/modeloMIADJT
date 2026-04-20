@@ -82,7 +82,7 @@ function calcular() {
         return;
     }
 
-    // A. CAPTURAR PESOS (Aquí es donde estaba el error anterior)
+    // A. CAPTURAR PESOS
     const current_weights = variables.map(v => {
         const sVal = document.getElementById(v + "_slider").value;
         const mVal = document.getElementById(v + "_manual").value;
@@ -97,7 +97,6 @@ function calcular() {
 
     // C. CALCULAR SCORES POR CLUSTER
     let infoClusters = centroides.map((cluster, index) => {
-        // Usamos current_weights aquí adentro
         let suma = variables.reduce((acc, v, i) => {
             let valCentroide = cluster[v] || 0;
             return acc + (current_weights[i] * Math.pow(valCentroide, 2));
@@ -122,7 +121,6 @@ function calcular() {
     // D. ORDENAR TOP 10
     let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
 
-    // --- NUEVO: Necesitamos el min y max GLOBAL para que los colores funcionen en todo el mapa ---
     const todosLosScores = infoClusters.map(c => c.scoreCluster);
     const minGlobal = Math.min(...todosLosScores);
     const maxGlobal = Math.max(...todosLosScores);
@@ -134,12 +132,10 @@ function calcular() {
     const idsTop10 = top10.map(c => c.id);
 
     viviendas.forEach(p => {
-        // Obtenemos el score del cluster al que pertenece este punto
         let sc = infoClusters[p.Clusters].scoreCluster;
-        
-        // Mapa 1: Usamos la escala de azul a rojo con el rango GLOBAL
         let col = colorScore(sc, minGlobal, maxGlobal);
 
+        // Mapa 1
         L.circleMarker([p.lat, p.lon], { 
             radius: 2, 
             color: col, 
@@ -147,11 +143,10 @@ function calcular() {
             fillOpacity: 0.6 
         }).addTo(capaPuntos);
 
-        // Mapa 2: Solo los 10 mejores clusters
+        // Mapa 2
         if (idsTop10.includes(p.Clusters)) {
             L.circleMarker([p.lat, p.lon], {
                 radius: 3,
-                // El mejor de todos en Dorado, el resto del top 10 en Azul para resaltar
                 color: p.Clusters === top10[0].id ? "gold" : "#0000FF", 
                 fillOpacity: 0.8,
                 weight: 1,
@@ -160,7 +155,7 @@ function calcular() {
         }
     });
 
-    // F. RENDERIZAR TABLAS (Actualizado para permitir clics)
+    // F. RENDERIZAR TABLA 1 (Clusters)
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;">
                 <tr style="background:#eee;">
                     <th>Cluster (Clic para filtrar Mapa 2)</th>
@@ -170,7 +165,6 @@ function calcular() {
                 </tr>`;
     
     top10.forEach(c => {
-        // Añadimos 'onclick' y un estilo de cursor para que parezca un botón
         h1 += `
             <tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'">
                 <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
@@ -181,6 +175,7 @@ function calcular() {
     });
     document.getElementById("tabla-clusters").innerHTML = h1 + `</table><p><small><i>* Haz clic en una fila de la tabla para ver solo ese cluster en el Mapa 2.</i></small></p>`;
 
+    // G. RENDERIZAR TABLA 2 (Viviendas del Mejor Cluster)
     let mejorClusterId = top10[0].id;
     let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
@@ -191,41 +186,78 @@ function calcular() {
     vMejor.forEach(v => {
         h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`;
     });
+
+    // Resetear título e inyectar tabla
+    document.querySelector("h3:last-of-type").innerText = "Top 5 Viviendas recomendadas (Mejor Cluster)";
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
+    // Mensaje de éxito
     document.getElementById("resultado").innerText = "Cálculo completado. Ca: $" + Ca.toLocaleString();
 }
 
+
+
 // =============================
-// 5. NUEVA FUNCIÓN: FILTRAR MAPA 2
+// 5. FUNCIÓN: FILTRAR MAPA 2
 // =============================
 function filtrarMapa2(clusterId) {
-    // 1. Limpiar el Mapa 2
+    // A. LIMPIAR Y RE-DIBUJAR MAPA 2
     capaPuntos2.clearLayers();
-
-    // 2. Filtrar solo las viviendas de ese cluster
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
 
-    // 3. Dibujar los puntos en el Mapa 2
+    // B. CAPTURAR CAPACIDAD (Ca) PARA RECALCULAR SCORES
+    const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
+    const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
+    const gastos = parseFloat(document.getElementById("gastos").value) || 0;
+    const Ca = (ingresos - ahorros - gastos) * 0.733;
+
+    // C. ACTUALIZAR TABLA 2 (Top Viviendas del Cluster Seleccionado)
+    // Mapeamos para calcular el score económico actual y ordenamos de menor a mayor
+    let vOrdenadas = vFiltradas
+        .map(v => ({ 
+            ...v, 
+            sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 
+        }))
+        .sort((a, b) => a.sE - b.sE);
+
+    // Tomamos las primeras 10 o todas las que haya para mostrar en la tabla
+    let topViviendas = vOrdenadas.slice(0, 10); 
+
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
+                <tr style="background:#ffd700;">
+                    <th>Precio</th>
+                    <th>Score Económico Abs (Menor es mejor)</th>
+                    <th>Latitud</th>
+                    <th>Longitud</th>
+                </tr>`;
+    
+    topViviendas.forEach(v => {
+        h2 += `<tr>
+                <td>$${v.Precio.toLocaleString()}</td>
+                <td>${v.sE.toFixed(4)}</td>
+                <td>${v.lat.toFixed(4)}</td>
+                <td>${v.lon.toFixed(4)}</td>
+               </tr>`;
+    });
+
+    // Cambiamos el título dinámicamente y llenamos la tabla
+    document.querySelector("h3:last-of-type").innerText = `Viviendas recomendadas del Cluster ${clusterId}`;
+    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
+
+    // D. DIBUJAR PUNTOS EN MAPA Y HACER ZOOM
     vFiltradas.forEach(p => {
         L.circleMarker([p.lat, p.lon], {
-            radius: 5,         // Un poco más grande para resaltar
-            color: "gold",     // Color llamativo
+            radius: 5,
+            color: "gold",
             fillOpacity: 0.9,
             weight: 2,
             stroke: true
-        }).bindPopup(`
-            <b>Cluster Seleccionado: ${clusterId}</b><br>
-            Precio: $${p.Precio.toLocaleString()}<br>
-            Ubicación: ${p.lat}, ${p.lon}
-        `).addTo(capaPuntos2);
+        }).bindPopup(`<b>Cluster: ${clusterId}</b><br>Precio: $${p.Precio.toLocaleString()}`)
+          .addTo(capaPuntos2);
     });
 
-    // 4. Auto-zoom: Ajustar la cámara para ver todos los puntos del cluster
     if (vFiltradas.length > 0) {
         const grupo = new L.featureGroup(capaPuntos2.getLayers());
         map2.fitBounds(grupo.getBounds(), { padding: [20, 20] });
-    } else {
-        alert("No hay viviendas registradas en este cluster.");
     }
 }
