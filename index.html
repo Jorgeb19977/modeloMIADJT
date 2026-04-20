@@ -1,85 +1,51 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="es">
 <head>
-
-<title>Modelo recomendación vivienda Bogotá</title>
-
-<!-- Estilo del mapa Leaflet -->
-<link
-rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css"
-/>
-
+    <meta charset="UTF-8">
+    <title>Modelo recomendación vivienda Bogotá</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #variables { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 8px; }
+        .map-container { height: 500px; width: 100%; margin-bottom: 30px; border: 1px solid #ccc; }
+        .legend { background: white; padding: 10px; border: 1px solid #ccc; line-height: 1.5em; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
 </head>
-
 <body>
 
-<h2>Modelo recomendación vivienda Bogotá</h2>
+    <h2>1. Configuración de Preferencias</h2>
+    <div id="variables"></div>
 
-<div id="variables"></div>
+    <h2>2. Datos Financieros</h2>
+    <div id="seccion-economica">
+        <label>Ingresos Mensuales: <input type="number" id="ingresos" value="6000000"></label><br>
+        <label>Ahorros Totales: <input type="number" id="ahorros" value="1000000"></label><br>
+        <label>Gastos Mensuales: <input type="number" id="gastos" value="2000000"></label><br>
+    </div>
 
-<!--Eco-->
+    <br>
+    <button onclick="calcular()" style="padding: 10px 20px; cursor: pointer;">CALCULAR RECOMENDACIÓN</button>
+    
+    <p id="resultado" style="font-weight: bold; color: blue;"></p>
 
-<div id="seccion-economica">
-    <h3>Datos Financieros</h3>
-    <label>Ingresos Mensuales:</label>
-    <input type="number" id="ingresos" value="0"><br>
-    <label>Ahorros Totales:</label>
-    <input type="number" id="ahorros" value="0"><br>
-    <label>Gastos Mensuales:</label>
-    <input type="number" id="gastos" value="0"><br>
-</div>
+    <hr>
 
+    <h2>Mapa 1: Todas las Viviendas (Score por Variables)</h2>
+    <div id="map" class="map-container"></div>
 
-<br>
+    <h2>Mapa 2: Top 10 Clusters más afines</h2>
+    <div id="map2" class="map-container"></div>
 
-<button onclick="calcular()">Calcular cluster recomendado</button>
+    <h3>Top 10 Clusters más afines</h3>
+    <div id="tabla-clusters"></div>
 
-<h3 id="resultado"></h3>
+    <h3>Top 5 Viviendas recomendadas (Mejor Cluster)</h3>
+    <div id="tabla-viviendas"></div>
 
-
-<h2>Mapa de recomendaciones</h2>
-
-<div id="map" style="height:500px;"></div>
-
-
-<!-- Librería Leaflet -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<!-- Tu script principal -->
-<script src="script.js"></script>
-
-
-<style>
-
-.legend {
-background: white;
-padding: 8px;
-border-radius: 6px;
-font-size: 12px;
-line-height: 18px;
-box-shadow: 0 0 6px rgba(0,0,0,0.3);
-}
-
-.legend i {
-width: 14px;
-height: 14px;
-float: left;
-margin-right: 6px;
-opacity: 0.8;
-}
-
-</style>
-
-<div id="map2" style="height: 500px; width: 100%; margin-top: 20px;"></div>
-
-<h3>Top 10 Clusters más afines</h3>
-<div id="tabla-clusters"></div>
-
-<h3>Top 5 Viviendas recomendadas (Mejor Cluster)</h3>
-<div id="tabla-viviendas"></div>
-
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
 </body>
-
 </html>
