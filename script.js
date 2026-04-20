@@ -135,7 +135,7 @@ function calcular() {
         let sc = infoClusters[p.Clusters].scoreCluster;
         let col = colorScore(sc, minGlobal, maxGlobal);
 
-        // Mapa 1
+        // Mapa 1: Se mantiene igual
         L.circleMarker([p.lat, p.lon], { 
             radius: 2, 
             color: col, 
@@ -143,11 +143,11 @@ function calcular() {
             fillOpacity: 0.6 
         }).addTo(capaPuntos);
 
-        // Mapa 2
+        // Mapa 2: AHORA CON COLORES EN ESCALA
         if (idsTop10.includes(p.Clusters)) {
             L.circleMarker([p.lat, p.lon], {
                 radius: 3,
-                color: p.Clusters === top10[0].id ? "gold" : "#0000FF", 
+                color: col, // <--- Aquí usamos el color de la escala
                 fillOpacity: 0.8,
                 weight: 1,
                 stroke: true
@@ -201,58 +201,56 @@ function calcular() {
 // 5. FUNCIÓN: FILTRAR MAPA 2
 // =============================
 function filtrarMapa2(clusterId) {
-    // A. LIMPIAR Y RE-DIBUJAR MAPA 2
     capaPuntos2.clearLayers();
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
 
-    // B. CAPTURAR CAPACIDAD (Ca) PARA RECALCULAR SCORES
+    // Capturar datos para el Score Económico
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // C. ACTUALIZAR TABLA 2 (Top Viviendas del Cluster Seleccionado)
-    // Mapeamos para calcular el score económico actual y ordenamos de menor a mayor
-    let vOrdenadas = vFiltradas
-        .map(v => ({ 
-            ...v, 
-            sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 
-        }))
-        .sort((a, b) => a.sE - b.sE);
-
-    // Tomamos las primeras 10 o todas las que haya para mostrar en la tabla
-    let topViviendas = vOrdenadas.slice(0, 10); 
-
-    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#ffd700;">
-                    <th>Precio</th>
-                    <th>Score Económico Abs (Menor es mejor)</th>
-                    <th>Latitud</th>
-                    <th>Longitud</th>
-                </tr>`;
-    
-    topViviendas.forEach(v => {
-        h2 += `<tr>
-                <td>$${v.Precio.toLocaleString()}</td>
-                <td>${v.sE.toFixed(4)}</td>
-                <td>${v.lat.toFixed(4)}</td>
-                <td>${v.lon.toFixed(4)}</td>
-               </tr>`;
+    // Obtener el color que le corresponde a este cluster según su score
+    // (Buscamos en los centroides el score de este cluster específico)
+    const current_weights = variables.map(v => {
+        const sVal = document.getElementById(v + "_slider").value;
+        const mVal = document.getElementById(v + "_manual").value;
+        return (parseFloat(mVal) > 0 ? parseFloat(mVal) : parseFloat(sVal)) / 1000;
     });
 
-    // Cambiamos el título dinámicamente y llenamos la tabla
-    document.querySelector("h3:last-of-type").innerText = `Viviendas recomendadas del Cluster ${clusterId}`;
+    const clusterData = centroides[clusterId];
+    let suma = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(clusterData[v] || 0, 2)), 0);
+    let sc = Math.sqrt(suma);
+
+    // Necesitamos el min y max global para que el color sea consistente
+    const todosLosScores = centroides.map((c) => {
+        let s = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(c[v] || 0, 2)), 0);
+        return Math.sqrt(s);
+    });
+    const col = colorScore(sc, Math.min(...todosLosScores), Math.max(...todosLosScores));
+
+    // Actualizar Tabla 2
+    let vOrdenadas = vFiltradas
+        .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
+        .sort((a, b) => a.sE - b.sE);
+
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
+                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th><th>Lat/Lon</th></tr>`;
+    vOrdenadas.slice(0, 10).forEach(v => {
+        h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td><td>${v.lat.toFixed(3)}, ${v.lon.toFixed(3)}</td></tr>`;
+    });
+    document.querySelector("h3:last-of-type").innerText = `Viviendas del Cluster ${clusterId}`;
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // D. DIBUJAR PUNTOS EN MAPA Y HACER ZOOM
+    // Dibujar en Mapa 2 con su color de escala
     vFiltradas.forEach(p => {
         L.circleMarker([p.lat, p.lon], {
             radius: 5,
-            color: "gold",
+            color: col, // <--- Color dinámico basado en la escala
             fillOpacity: 0.9,
             weight: 2,
             stroke: true
-        }).bindPopup(`<b>Cluster: ${clusterId}</b><br>Precio: $${p.Precio.toLocaleString()}`)
+        }).bindPopup(`Cluster: ${clusterId}<br>Precio: $${p.Precio.toLocaleString()}`)
           .addTo(capaPuntos2);
     });
 
