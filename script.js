@@ -85,68 +85,84 @@ function crearLeyenda() {
 // =============================
 // 4. LÓGICA PRINCIPAL
 // =============================
+let map2, capaPuntos2;
+
+// Dentro de tu DOMContentLoaded inicializa el segundo mapa:
+document.addEventListener("DOMContentLoaded", function () {
+    // ... (Inicialización del mapa 1) ...
+    
+    map2 = L.map('map2').setView([4.65, -74.1], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
+    capaPuntos2 = L.layerGroup().addTo(map2);
+});
+
 function calcular() {
-    if (!map || viviendas.length === 0) return alert("Cargando datos...");
-
-    capaPuntos.clearLayers();
-
-    // --- PARTE 1: CAPTURAR PESOS (Lo que ya tenías) ---
-    let user_weights = variables.map(v => {
-        let s = document.getElementById(v + "_slider").value;
-        let m = document.getElementById(v + "_manual").value;
-        return (m > 0 ? m : s) / 1000;
-    });
-
-    // --- PARTE 2: LÓGICA ECONÓMICA (Nueva) ---
+    // ... (Captura de pesos y cálculo de Ca que ya teníamos) ...
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
-
-    // Tu fórmula de Python: Ca = (Ingresos - Ahorros - Gastos) * 0.733
-    // Nota: Revisa si en Python restabas ahorros o si los ahorros suman a la capacidad.
-    // Según tu fórmula:
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // --- PARTE 3: CALCULAR SCORES POR CLUSTER ---
-    let scoresCluster = centroides.map(cluster => {
+    if (viviendas.length === 0 || centroides.length === 0) return;
+
+    // 1. Calcular scores base para todos los clusters
+    let infoClusters = centroides.map((cluster, index) => {
         let suma = variables.reduce((acc, v, i) => acc + (user_weights[i] * Math.pow(cluster[v], 2)), 0);
-        return Math.sqrt(suma);
+        let sCluster = Math.sqrt(suma);
+        
+        // Filtrar viviendas de este cluster para sacar promedios económicos
+        let viviendasEnCluster = viviendas.filter(v => v.Clusters === index);
+        let totalScoreE = viviendasEnCluster.reduce((acc, v) => {
+            let sE = Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0;
+            return acc + sE;
+        }, 0);
+
+        return {
+            id: index,
+            scoreCluster: sCluster,
+            cantidadPuntos: viviendasEnCluster.length,
+            scoreE_Promedio: viviendasEnCluster.length > 0 ? (totalScoreE / viviendasEnCluster.length) : 0
+        };
     });
 
-    let minScore = Math.min(...scoresCluster);
-    let maxScore = Math.max(...scoresCluster);
+    // 2. Ordenar y obtener los 10 mejores clusters
+    let top10Clusters = [...infoClusters]
+        .sort((a, b) => a.scoreCluster - b.scoreCluster)
+        .slice(0, 10);
 
-    // --- PARTE 4: PINTAR VIVIENDAS + SCORE ECONÓMICO ---
-    viviendas.forEach(p => {
-        // 1. Score del Cluster (Normalizado 0-1)
-        let sClusterNorm = (scoresCluster[p.Clusters] - minScore) / (maxScore - minScore);
-        if (isNaN(sClusterNorm)) sClusterNorm = 0;
+    // --- RENDERIZAR TABLA 1 ---
+    let htmlTabla1 = `<table border="1"><tr><th>Cluster</th><th>Puntos</th><th>Score Cluster</th><th>Score Económico Prom.</th></tr>`;
+    top10Clusters.forEach(c => {
+        htmlTabla1 += `<tr><td>${c.id}</td><td>${c.cantidadPuntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreE_Promedio.toFixed(4)}</td></tr>`;
+    });
+    document.getElementById("tabla-clusters").innerHTML = htmlTabla1 + `</table>`;
 
-        // 2. Score Económico (Basado en tu fórmula de Python)
-        // data32["Score E"] = (data32["Precio"] - Ca) / Ca
-        let scoreE = Ca !== 0 ? (p.Precio - Ca) / Ca : 0;
-        let scoreEAbsoluto = Math.abs(scoreE);
-
-        // 3. Score Final Combinado (Opcional: puedes promediarlos o usar uno para color y otro para tamaño)
-        // Por ahora, mantendremos el color basado en el Score de Cluster como pediste antes
-        let colorPunto = colorScore(scoresCluster[p.Clusters], minScore, maxScore);
-
+    // 3. SEGUNDO MAPA: Graficar solo puntos de los 10 mejores clusters
+    capaPuntos2.clearLayers();
+    let idsTop10 = top10Clusters.map(c => c.id);
+    
+    viviendas.filter(v => idsTop10.includes(v.Clusters)).forEach(p => {
         L.circleMarker([p.lat, p.lon], {
-            radius: 3, 
-            color: colorPunto,
-            fillOpacity: 0.8,
-            stroke: true,
-            weight: 1
-        }).bindPopup(`
-            <b>Información de Vivienda</b><br>
-            Precio: $${p.Precio.toLocaleString()}<br>
-            Capacidad: $${Ca.toFixed(2)}<br>
-            <b>Score Económico:</b> ${scoreEAbsoluto.toFixed(4)}<br>
-            <b>Score Cluster:</b> ${scoresCluster[p.Clusters].toFixed(4)}
-        `).addTo(capaPuntos);
+            radius: 2,
+            color: idsTop10.indexOf(p.Clusters) === 0 ? "gold" : "blue", // El mejor cluster en dorado
+            fillOpacity: 0.5
+        }).addTo(capaPuntos2);
     });
 
-    // Actualizar resultados de texto (Top 5)
-    let ordenados = scoresCluster.map((s, i) => ({cluster: i, score: s})).sort((a, b) => a.score - b.score);
-    document.getElementById("resultado").innerHTML = "<b>Análisis Completado</b><br>Capacidad Calculada: $" + Ca.toFixed(2);
+    // 4. TABLA 2: 5 puntos más recomendables del MEJOR cluster (el de scoreCluster más bajo)
+    let mejorClusterId = top10Clusters[0].id;
+    let viviendasMejorCluster = viviendas
+        .filter(v => v.Clusters === mejorClusterId)
+        .map(v => ({
+            ...v,
+            scoreEAbs: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0
+        }))
+        .sort((a, b) => a.scoreEAbs - b.scoreEAbs) // De nuevo, el más cercano a 0 es mejor
+        .slice(0, 5);
+
+    let htmlTabla2 = `<table border="1"><tr><th>Lat</th><th>Lon</th><th>Precio</th><th>Score Económico Abs.</th></tr>`;
+    viviendasMejorCluster.forEach(v => {
+        htmlTabla2 += `<tr><td>${v.lat}</td><td>${v.lon}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.scoreEAbs.toFixed(4)}</td></tr>`;
+    });
+    document.getElementById("tabla-viviendas").innerHTML = htmlTabla2 + `</table>`;
 }
