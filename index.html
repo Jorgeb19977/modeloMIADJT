@@ -2,90 +2,172 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Modelo recomendación vivienda Bogotá</title>
+    <title>Dashboard Recomendación Vivienda Bogotá</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+        body { font-family: sans-serif; margin: 0; padding: 0; line-height: 1.4; background-color: #f4f4f9; }
         
-        /* Ajuste para la lista arrastrable */
+        /* Contenedor principal en Flexbox */
+        .dashboard-container {
+            display: flex;
+            height: 100vh; /* Ocupa toda la altura de la pantalla */
+            overflow: hidden;
+        }
+
+        /* PANEL IZQUIERDO: Entradas de datos */
+        .sidebar {
+            width: 350px;
+            background: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Scroll independiente si la lista es larga */
+            z-index: 10;
+        }
+
+        /* PANEL DERECHO: Mapas y Resultados */
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Divide el espacio en dos columnas para mapas */
+            gap: 20px;
+            align-content: start;
+        }
+
+        /* Títulos de sección */
+        h2, h3 { margin-top: 0; color: #333; font-size: 1.1rem; }
+
+        /* Lista arrastrable */
         #variables { 
             display: flex; 
             flex-direction: column; 
-            gap: 8px; 
-            background: #f1f1f1; 
-            padding: 20px; 
+            gap: 5px; 
+            background: #f9f9f9; 
+            padding: 10px; 
             border-radius: 8px; 
-            max-width: 600px; 
-            border: 2px dashed #ccc;
+            border: 2px dashed #ddd;
+            margin-bottom: 20px;
         }
 
         .variable-item {
-            user-select: none; 
-            transition: transform 0.2s, background-color 0.2s;
+            padding: 8px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: grab;
+            font-size: 0.85rem;
         }
 
-        .variable-item:active {
-            opacity: 0.5;
-            background-color: #e0e0e0;
+        .seccion-input {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
 
-        .map-container { height: 500px; width: 100%; margin-bottom: 30px; border: 1px solid #ccc; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        .seccion-input input {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
 
-        tr.fila-cluster { cursor: pointer; transition: background 0.3s; }
+        /* Mapas */
+        .map-container { 
+            height: 400px; 
+            width: 100%; 
+            border: 1px solid #ccc; 
+            border-radius: 8px;
+            background: white;
+        }
+
+        /* Tablas */
+        .tabla-wrapper {
+            grid-column: span 1; /* Ocupan una columna cada una */
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; }
+
+        tr.fila-cluster { cursor: pointer; }
         tr.fila-cluster:hover { background-color: #f0f8ff !important; }
 
-        /* --- NUEVO: Estilo para los números dentro de los puntos del mapa --- */
         .etiqueta-numero {
             background: transparent !important;
             border: none !important;
-            box-shadow: none !important;
             color: white !important;
             font-weight: bold !important;
-            font-size: 11px !important;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px black; /* Para que el número resalte sobre cualquier color */
+            font-size: 10px !important;
+            text-shadow: 1px 1px 2px black;
         }
+
+        /* El botón de calcular al final del sidebar */
+        .btn-calcular {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-calcular:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
 
-    <h2>1. Prioridad de Variables (Arrastra para reordenar)</h2>
-    <p>Mueve hacia arriba las variables que consideres <b>más importantes</b>. El sistema asignará automáticamente los pesos de mayor a menor importancia.</p>
-    
-    <div id="variables">
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <h2>Configuración</h2>
+            <p style="font-size: 0.8rem;">Arrastra para priorizar (Arriba = más importante).</p>
+            
+            <div id="variables">
+                </div>
+
+            <div class="seccion-input">
+                <h3>Datos Financieros</h3>
+                <label>Ingresos:</label>
+                <input type="number" id="ingresos" value="0">
+                <label>Ahorros:</label>
+                <input type="number" id="ahorros" value="0">
+                <label>Gastos:</label>
+                <input type="number" id="gastos" value="0">
+            </div>
+
+            <button class="btn-calcular" onclick="calcular()">CALCULAR</button>
+            <p id="resultado" style="font-size: 0.85rem; color: blue; margin-top: 10px;"></p>
         </div>
 
-    <h2>2. Datos Financieros</h2>
-    <div id="seccion-economica">
-        <label>Ingresos Mensuales: <input type="number" id="ingresos" value="0"></label><br>
-        <label>Ahorros Totales: <input type="number" id="ahorros" value="0"></label><br>
-        <label>Gastos Mensuales: <input type="number" id="gastos" value="0"></label><br>
+        <div class="main-content">
+            <div class="map-box">
+                <h3>Mapa 1: General (Bogotá)</h3>
+                <div id="map" class="map-container"></div>
+            </div>
+            
+            <div class="map-box">
+                <h3>Mapa 2: Detalle Cluster Seleccionado</h3>
+                <div id="map2" class="map-container"></div>
+            </div>
+
+            <div class="tabla-wrapper">
+                <h3>Top 10 Clusters</h3>
+                <div id="tabla-clusters" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="tabla-wrapper">
+                <h3>Viviendas del Cluster</h3>
+                <div id="tabla-viviendas" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
     </div>
-
-    <br>
-    <button onclick="calcular()" style="padding: 15px 30px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold;">
-        CALCULAR RECOMENDACIÓN
-    </button>
-    
-    <p id="resultado" style="font-weight: bold; color: blue;"></p>
-
-    <hr>
-
-    <h2>Mapa 1: Todas las Viviendas (Score por Variables)</h2>
-    <div id="map" class="map-container"></div>
-
-    <h2>Mapa 2: Análisis Detallado de Clusters</h2>
-    <div id="map2" class="map-container"></div>
-
-    <h3>Top 10 Clusters más afines</h3>
-    <div id="tabla-clusters"></div>
-
-    <h3>Recomendaciones Detalladas</h3>
-    <div id="tabla-viviendas"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="script.js"></script>
