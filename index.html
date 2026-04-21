@@ -5,24 +5,47 @@
     <title>Modelo recomendación vivienda Bogotá</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        #variables { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 8px; }
+        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+        
+        /* Ajuste para la lista arrastrable */
+        #variables { 
+            display: flex; 
+            flex-direction: column; /* Lista vertical */
+            gap: 8px; 
+            background: #f1f1f1; 
+            padding: 20px; 
+            border-radius: 8px; 
+            max-width: 600px; /* Para que no ocupe todo el ancho y sea fácil de arrastrar */
+            border: 2px dashed #ccc;
+        }
+
+        .variable-item {
+            user-select: none; /* Evita seleccionar texto al arrastrar */
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .variable-item:active {
+            opacity: 0.5;
+            background-color: #e0e0e0;
+        }
+
         .map-container { height: 500px; width: 100%; margin-bottom: 30px; border: 1px solid #ccc; }
-        .legend { background: white; padding: 10px; border: 1px solid #ccc; line-height: 1.5em; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
 
-        /* --- --- */
         tr.fila-cluster { cursor: pointer; transition: background 0.3s; }
         tr.fila-cluster:hover { background-color: #f0f8ff !important; }
-        /* ------------------------ */
     </style>
 </head>
 <body>
 
-    <h2>1. Configuración de Preferencias</h2>
-    <div id="variables"></div>
+    <h2>1. Prioridad de Variables (Arrastra para reordenar)</h2>
+    <p>Mueve hacia arriba las variables que consideres <b>más importantes</b>. El sistema asignará automáticamente los pesos de mayor a menor importancia.</p>
+    
+    <div id="variables">
+        </div>
 
     <h2>2. Datos Financieros</h2>
     <div id="seccion-economica">
@@ -32,7 +55,9 @@
     </div>
 
     <br>
-    <button onclick="calcular()" style="padding: 10px 20px; cursor: pointer;">CALCULAR RECOMENDACIÓN</button>
+    <button onclick="calcular()" style="padding: 15px 30px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold;">
+        CALCULAR RECOMENDACIÓN
+    </button>
     
     <p id="resultado" style="font-weight: bold; color: blue;"></p>
 

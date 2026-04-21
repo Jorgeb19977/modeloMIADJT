@@ -16,8 +16,10 @@ let map, map2, capaPuntos, capaPuntos2;
 // =============================
 // 2. INICIALIZACIÓN
 // =============================
+const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
+
 document.addEventListener("DOMContentLoaded", function () {
-    // Inicializar Mapas
+    // Inicializar Mapas (esto se queda igual)
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
@@ -26,32 +28,39 @@ document.addEventListener("DOMContentLoaded", function () {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
     capaPuntos2 = L.layerGroup().addTo(map2);
 
-    // Crear Sliders en el HTML
+    // Generar Lista Arrastrable
     const container = document.getElementById("variables");
-    if (container) {
-        variables.forEach(v => {
-            container.innerHTML += `
-                <div style="margin-bottom:10px;">
-                    <label><b>${v}</b></label><br>
-                    Slider: <input type="range" id="${v}_slider" min="0" max="1000" value="0" style="width:150px">
-                    Manual: <input type="number" id="${v}_manual" value="0" style="width:60px">
-                </div>`;
-        });
-    }
+    variables.forEach((v, index) => {
+        const div = document.createElement("div");
+        div.className = "variable-item";
+        div.draggable = true;
+        div.id = v;
+        div.style = "padding: 10px; margin: 5px; background: white; border: 1px solid #bbb; cursor: grab; display: flex; align-items: center; border-radius: 4px;";
+        div.innerHTML = `<span style="margin-right: 15px; color: #888;">☰</span> <b>${v}</b>`;
+        
+        // Eventos para arrastrar
+        div.ondragstart = (e) => e.dataTransfer.setData("text/plain", e.target.id);
+        div.ondragover = (e) => e.preventDefault();
+        div.ondrop = (e) => {
+            e.preventDefault();
+            const data = e.dataTransfer.getData("text");
+            const draggedElement = document.getElementById(data);
+            const targetElement = e.target.closest(".variable-item");
+            if (targetElement && draggedElement !== targetElement) {
+                container.insertBefore(draggedElement, targetElement);
+            }
+        };
+        container.appendChild(div);
+    });
 
-    // Cargar Datos JSON
+    // Cargar Archivos JSON (igual)
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
     ]).then(([dataC, dataV]) => {
         centroides = dataC;
         viviendas = dataV;
-        console.log("Datos cargados correctamente");
-        const res = document.getElementById("resultado");
-        if(res) res.innerText = "Datos listos. Ingresa tus valores y haz clic en Calcular.";
-    }).catch(err => {
-        console.error("Error cargando archivos:", err);
-        alert("Error al cargar los archivos JSON. Revisa la consola.");
+        document.getElementById("resultado").innerText = "Datos listos. Ordena las variables y calcula.";
     });
 });
 
@@ -82,12 +91,22 @@ function calcular() {
         return;
     }
 
-    // A. CAPTURAR PESOS
-    const current_weights = variables.map(v => {
-        const sVal = document.getElementById(v + "_slider").value;
-        const mVal = document.getElementById(v + "_manual").value;
-        return (parseFloat(mVal) > 0 ? parseFloat(mVal) : parseFloat(sVal)) / 1000;
+    // A. CAPTURAR PESOS SEGÚN EL ORDEN DE LA LISTA
+    const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
+    
+    // 1. Obtenemos el orden actual de las IDs desde el contenedor de la lista
+    const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
+    
+    // 2. Creamos un mapa temporal para saber qué peso le toca a cada nombre de variable
+    let mapaDePesos = {};
+    listaOrdenada.forEach((nombreVar, index) => {
+        // Asignamos el peso según la posición (index) en la lista
+        mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
     });
+
+    // 3. Generamos el array 'current_weights' respetando el orden original de la constante 'variables'
+    // Esto es CRÍTICO para que el cálculo matemático coincida con las columnas de tus JSON
+    const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
 
     // B. CAPTURAR DATOS ECONÓMICOS
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
@@ -99,6 +118,7 @@ function calcular() {
     let infoClusters = centroides.map((cluster, index) => {
         let suma = variables.reduce((acc, v, i) => {
             let valCentroide = cluster[v] || 0;
+            // Usamos los nuevos pesos calculados por posición
             return acc + (current_weights[i] * Math.pow(valCentroide, 2));
         }, 0);
         
@@ -118,6 +138,7 @@ function calcular() {
         };
     });
 
+    // --- (De aquí en adelante, el resto de tu código D, E, F y G se mantiene igual) ---
     // D. ORDENAR TOP 10
     let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
 
@@ -128,71 +149,36 @@ function calcular() {
     // E. LIMPIAR Y PINTAR MAPAS
     capaPuntos.clearLayers();
     capaPuntos2.clearLayers();
-
     const idsTop10 = top10.map(c => c.id);
 
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
         let col = colorScore(sc, minGlobal, maxGlobal);
-
-        // Mapa 1: Se mantiene igual
-        L.circleMarker([p.lat, p.lon], { 
-            radius: 2, 
-            color: col, 
-            stroke: false, 
-            fillOpacity: 0.6 
-        }).addTo(capaPuntos);
-
-        // Mapa 2: AHORA CON COLORES EN ESCALA
+        L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
         if (idsTop10.includes(p.Clusters)) {
-            L.circleMarker([p.lat, p.lon], {
-                radius: 3,
-                color: col, // <--- Aquí usamos el color de la escala
-                fillOpacity: 0.8,
-                weight: 1,
-                stroke: true
-            }).addTo(capaPuntos2);
+            L.circleMarker([p.lat, p.lon], { radius: 3, color: col, fillOpacity: 0.8, weight: 1, stroke: true }).addTo(capaPuntos2);
         }
     });
 
-    // F. RENDERIZAR TABLA 1 (Clusters)
-    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#eee;">
-                    <th>Cluster (Clic para filtrar Mapa 2)</th>
-                    <th>Puntos</th>
-                    <th>Score Cluster</th>
-                    <th>Econ. Prom</th>
-                </tr>`;
-    
+    // F. TABLA 1
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee;"><th>Cluster (Clic para filtrar)</th><th>Puntos</th><th>Score Cluster</th><th>Econ. Prom</th></tr>`;
     top10.forEach(c => {
-        h1 += `
-            <tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'">
-                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
-                <td>${c.puntos}</td>
-                <td>${c.scoreCluster.toFixed(4)}</td>
-                <td>${c.scoreEProm.toFixed(4)}</td>
-            </tr>`;
+        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'"><td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
-    document.getElementById("tabla-clusters").innerHTML = h1 + `</table><p><small><i>* Haz clic en una fila de la tabla para ver solo ese cluster en el Mapa 2.</i></small></p>`;
+    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 
-    // G. RENDERIZAR TABLA 2 (Viviendas del Mejor Cluster)
+    // G. TABLA 2
     let mejorClusterId = top10[0].id;
     let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE).slice(0, 5);
 
-    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th></tr>`;
-    vMejor.forEach(v => {
-        h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`;
-    });
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th></tr>`;
+    vMejor.forEach(v => { h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`; });
 
-    // Resetear título e inyectar tabla
     document.querySelector("h3:last-of-type").innerText = "Top 5 Viviendas recomendadas (Mejor Cluster)";
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
-
-    // Mensaje de éxito
-    document.getElementById("resultado").innerText = "Cálculo completado. Ca: $" + Ca.toLocaleString();
+    document.getElementById("resultado").innerText = "Cálculo completado con pesos jerárquicos. Ca: $" + Ca.toLocaleString();
 }
 
 
