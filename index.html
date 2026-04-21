@@ -14,7 +14,7 @@
         }
 
         .sidebar {
-            width: 320px; /* Un poco más angosta para dar espacio a los mapas */
+            width: 320px;
             background: white;
             padding: 15px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
@@ -34,11 +34,10 @@
 
         h2, h3 { margin-top: 0; color: #333; font-size: 1rem; }
 
-        /* --- LISTA DE VARIABLES MÁS PEQUEÑA --- */
         #variables { 
             display: flex; 
             flex-direction: column; 
-            gap: 4px; /* Espacio mínimo entre cuadros */
+            gap: 4px; 
             background: #f9f9f9; 
             padding: 8px; 
             border-radius: 8px; 
@@ -47,12 +46,12 @@
         }
 
         .variable-item {
-            padding: 5px 10px; /* Cuadros más delgados */
+            padding: 5px 10px; 
             background: white;
             border: 1px solid #ccc;
             border-radius: 4px;
             cursor: grab;
-            font-size: 0.75rem; /* Letra más pequeña */
+            font-size: 0.75rem; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
@@ -61,7 +60,6 @@
             margin-right: 8px;
             font-size: 0.7rem;
         }
-        /* -------------------------------------- */
 
         .seccion-input {
             background: #f8f9fa;
@@ -98,6 +96,16 @@
             border: 1px solid #eee;
         }
 
+        /* Estilo para la ficha de detalle (ocupa 2 columnas) */
+        .detalle-wrapper {
+            grid-column: span 2;
+            background: #fffde7; /* Color amarillento suave para resaltar */
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fbc02d;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
         table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
         th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
         th { background-color: #f2f2f2; position: sticky; top: 0; }
@@ -132,9 +140,7 @@
         <div class="sidebar">
             <h2>Configuración</h2>
             <p style="font-size: 0.75rem; color: #666;">Arrastra las variables por importancia:</p>
-            
-            <div id="variables">
-                </div>
+            <div id="variables"></div>
 
             <div class="seccion-input">
                 <h3>Datos Financieros</h3>
@@ -169,6 +175,13 @@
             <div class="tabla-wrapper">
                 <h3>Viviendas del Cluster</h3>
                 <div id="tabla-viviendas" style="max-height: 250px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="detalle-wrapper">
+                <h3>Ficha de Detalle: Vivienda Seleccionada</h3>
+                <div id="detalle-vivienda">
+                    <p style="color: #888; font-size: 0.85rem; font-style: italic;">Haz clic en "📍 Ver" en la tabla para cargar los datos técnicos del inmueble.</p>
+                </div>
             </div>
         </div>
     </div>

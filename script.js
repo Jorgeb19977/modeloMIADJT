@@ -268,9 +268,43 @@ function filtrarMapa2(clusterId) {
 }
 
 function hacerZoomVivienda(lat, lon, precio) {
-    map2.setView([lat, lon], 16); // Zoom cercano
+    // 1. Efecto en el mapa (lo que ya hacía)
+    map2.setView([lat, lon], 17); // Zoom más cercano para detalle
     L.popup()
         .setLatLng([lat, lon])
         .setContent(`<b>Vivienda Seleccionada</b><br>Precio: $${precio.toLocaleString()}`)
         .openOn(map2);
+
+    // 2. BUSCAR EL REGISTRO COMPLETO EN EL JSON
+    // Buscamos el punto que coincida con lat y lon
+    const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
+
+    if (registro) {
+        // 3. CONSTRUIR LA TABLA DE DETALLE
+        let htmlDetalle = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 10px;">
+                <div style="background: #fff; padding: 8px; border-radius: 4px; border-left: 4px solid #fbc02d;">
+                    <small>PRECIO:</small><br><strong>$${registro.Precio.toLocaleString()}</strong>
+                </div>
+        `;
+
+        // Recorremos las 15 variables para mostrar sus valores originales
+        variables.forEach(v => {
+            let valor = registro[v];
+            // Si el valor es numérico, lo redondeamos para que se vea limpio
+            if (typeof valor === 'number') valor = valor.toFixed(3);
+
+            htmlDetalle += `
+                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee;">
+                    <small style="color: #777; text-transform: uppercase; font-size: 0.65rem;">${v.replace(/_/g, ' ')}:</small><br>
+                    <strong>${valor}</strong>
+                </div>
+            `;
+        });
+
+        htmlDetalle += `</div>`;
+        
+        // Inyectar en el HTML
+        document.getElementById("detalle-vivienda").innerHTML = htmlDetalle;
+    }
 }
