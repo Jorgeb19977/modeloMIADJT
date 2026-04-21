@@ -187,52 +187,56 @@ function calcular() {
 // 5. FUNCIÓN: FILTRAR MAPA 2
 // =============================
 function filtrarMapa2(clusterId) {
+    // 1. Limpiar Mapa 2
     capaPuntos2.clearLayers();
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
 
-    // Capturar datos para el Score Económico
+    // 2. CAPTURAR CAPACIDAD ECONÓMICA (Ca)
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // Obtener el color que le corresponde a este cluster según su score
-    // (Buscamos en los centroides el score de este cluster específico)
-    const current_weights = variables.map(v => {
-        const sVal = document.getElementById(v + "_slider").value;
-        const mVal = document.getElementById(v + "_manual").value;
-        return (parseFloat(mVal) > 0 ? parseFloat(mVal) : parseFloat(sVal)) / 1000;
+    // 3. CAPTURAR PESOS ACTUALES (Desde la lista de importancia)
+    const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
+    const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
+    
+    let mapaDePesos = {};
+    listaOrdenada.forEach((nombreVar, index) => {
+        mapaDePesos[nombreVar] = pesosPredefinidos[index] / 1000;
     });
+    const current_weights = variables.map(v => mapaDePesos[v] || 0);
 
+    // 4. CALCULAR COLOR DEL CLUSTER
     const clusterData = centroides[clusterId];
-    let suma = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(clusterData[v] || 0, 2)), 0);
-    let sc = Math.sqrt(suma);
+    let sumaC = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(clusterData[v] || 0, 2)), 0);
+    let sc = Math.sqrt(sumaC);
 
-    // Necesitamos el min y max global para que el color sea consistente
-    const todosLosScores = centroides.map((c) => {
+    // Escala global para que el color sea el correcto
+    const todosLosScores = centroides.map(c => {
         let s = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(c[v] || 0, 2)), 0);
         return Math.sqrt(s);
     });
     const col = colorScore(sc, Math.min(...todosLosScores), Math.max(...todosLosScores));
 
-    // Actualizar Tabla 2
+    // 5. ACTUALIZAR TABLA 2
     let vOrdenadas = vFiltradas
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th><th>Lat/Lon</th></tr>`;
+                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th><th>Coordenadas</th></tr>`;
     vOrdenadas.slice(0, 10).forEach(v => {
         h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td><td>${v.lat.toFixed(3)}, ${v.lon.toFixed(3)}</td></tr>`;
     });
     document.querySelector("h3:last-of-type").innerText = `Viviendas del Cluster ${clusterId}`;
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // Dibujar en Mapa 2 con su color de escala
+    // 6. DIBUJAR PUNTOS EN MAPA 2
     vFiltradas.forEach(p => {
         L.circleMarker([p.lat, p.lon], {
             radius: 5,
-            color: col, // <--- Color dinámico basado en la escala
+            color: col,
             fillOpacity: 0.9,
             weight: 2,
             stroke: true
@@ -240,8 +244,9 @@ function filtrarMapa2(clusterId) {
           .addTo(capaPuntos2);
     });
 
+    // 7. ZOOM AUTOMÁTICO
     if (vFiltradas.length > 0) {
         const grupo = new L.featureGroup(capaPuntos2.getLayers());
-        map2.fitBounds(grupo.getBounds(), { padding: [20, 20] });
+        map2.fitBounds(grupo.getBounds(), { padding: [30, 30] });
     }
 }
