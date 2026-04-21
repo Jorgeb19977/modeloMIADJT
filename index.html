@@ -10,17 +10,17 @@
         /* Ajuste para la lista arrastrable */
         #variables { 
             display: flex; 
-            flex-direction: column; /* Lista vertical */
+            flex-direction: column; 
             gap: 8px; 
             background: #f1f1f1; 
             padding: 20px; 
             border-radius: 8px; 
-            max-width: 600px; /* Para que no ocupe todo el ancho y sea fácil de arrastrar */
+            max-width: 600px; 
             border: 2px dashed #ccc;
         }
 
         .variable-item {
-            user-select: none; /* Evita seleccionar texto al arrastrar */
+            user-select: none; 
             transition: transform 0.2s, background-color 0.2s;
         }
 
@@ -37,6 +37,18 @@
 
         tr.fila-cluster { cursor: pointer; transition: background 0.3s; }
         tr.fila-cluster:hover { background-color: #f0f8ff !important; }
+
+        /* --- NUEVO: Estilo para los números dentro de los puntos del mapa --- */
+        .etiqueta-numero {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: white !important;
+            font-weight: bold !important;
+            font-size: 11px !important;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black; /* Para que el número resalte sobre cualquier color */
+        }
     </style>
 </head>
 <body>
@@ -66,13 +78,13 @@
     <h2>Mapa 1: Todas las Viviendas (Score por Variables)</h2>
     <div id="map" class="map-container"></div>
 
-    <h2>Mapa 2: Top 10 Clusters más afines</h2>
+    <h2>Mapa 2: Análisis Detallado de Clusters</h2>
     <div id="map2" class="map-container"></div>
 
     <h3>Top 10 Clusters más afines</h3>
     <div id="tabla-clusters"></div>
 
-    <h3>Top 5 Viviendas recomendadas (Mejor Cluster)</h3>
+    <h3>Recomendaciones Detalladas</h3>
     <div id="tabla-viviendas"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>

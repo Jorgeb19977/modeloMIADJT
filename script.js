@@ -219,34 +219,59 @@ function filtrarMapa2(clusterId) {
     });
     const col = colorScore(sc, Math.min(...todosLosScores), Math.max(...todosLosScores));
 
-    // 5. ACTUALIZAR TABLA 2
+    // 5. ACTUALIZAR TABLA 2 (Con Numeración)
     let vOrdenadas = vFiltradas
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
+    let topViviendas = vOrdenadas.slice(0, 10); // Tomamos las 10 mejores
+
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th><th>Coordenadas</th></tr>`;
-    vOrdenadas.slice(0, 10).forEach(v => {
-        h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td><td>${v.lat.toFixed(3)}, ${v.lon.toFixed(3)}</td></tr>`;
+                <tr style="background:#ffd700;">
+                    <th>#</th>
+                    <th>Precio</th>
+                    <th>Score Económico Abs</th>
+                    <th>Acción</th>
+                </tr>`;
+    
+    topViviendas.forEach((v, i) => {
+        const num = i + 1; // El número de la vivienda (1, 2, 3...)
+        h2 += `<tr>
+                <td><b>${num}</b></td>
+                <td>$${v.Precio.toLocaleString()}</td>
+                <td>${v.sE.toFixed(4)}</td>
+                <td><button onclick="hacerZoomVivienda(${v.lat}, ${v.lon}, ${v.Precio})">Ver</button></td>
+               </tr>`;
     });
-    document.querySelector("h3:last-of-type").innerText = `Viviendas del Cluster ${clusterId}`;
+    document.querySelector("h3:last-of-type").innerText = `Top 10 Viviendas del Cluster ${clusterId}`;
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // 6. DIBUJAR PUNTOS EN MAPA 2
-    vFiltradas.forEach(p => {
-        L.circleMarker([p.lat, p.lon], {
-            radius: 5,
+    // 6. DIBUJAR PUNTOS EN MAPA 2 (Con Etiquetas numéricas)
+    topViviendas.forEach((p, i) => {
+        const num = i + 1;
+        
+        // Creamos un marcador circular normal
+        let marcador = L.circleMarker([p.lat, p.lon], {
+            radius: 8, // Un poco más grande para que quepa el número
             color: col,
             fillOpacity: 0.9,
             weight: 2,
             stroke: true
-        }).bindPopup(`Cluster: ${clusterId}<br>Precio: $${p.Precio.toLocaleString()}`)
-          .addTo(capaPuntos2);
-    });
+        }).addTo(capaPuntos2);
 
-    // 7. ZOOM AUTOMÁTICO
-    if (vFiltradas.length > 0) {
-        const grupo = new L.featureGroup(capaPuntos2.getLayers());
-        map2.fitBounds(grupo.getBounds(), { padding: [30, 30] });
-    }
+        // AÑADIMOS UNA ETIQUETA PERMANENTE CON EL NÚMERO
+        marcador.bindTooltip(`${num}`, {
+            permanent: true, 
+            direction: 'center',
+            className: 'etiqueta-numero' // Clase CSS para quitar el fondo blanco feo
+        }).bindPopup(`<b>Vivienda #${num}</b><br>Precio: $${p.Precio.toLocaleString()}`);
+    });
+}
+
+function hacerZoomVivienda(lat, lon, precio) {
+    map2.setView([lat, lon], 16); // Zoom cercano
+    L.popup()
+        .setLatLng([lat, lon])
+        .setContent(`<b>Vivienda Seleccionada</b><br>Precio: $${precio.toLocaleString()}`)
+        .openOn(map2);
 }
