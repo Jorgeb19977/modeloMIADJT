@@ -1,3 +1,23 @@
+let limitesGlobales = {};
+
+function calcularLimites() {
+    variables.forEach(v => {
+        const valores = viviendas.map(reg => reg[v] || 0);
+        limitesGlobales[v] = {
+            min: Math.min(...valores),
+            max: Math.max(...valores)
+        };
+    });
+    // También para el Precio
+    const precios = viviendas.map(reg => reg.Precio || 0);
+    limitesGlobales["Precio"] = {
+        min: Math.min(...precios),
+        max: Math.max(...precios)
+    };
+}
+// Llama a calcularLimites() justo después de que 'viviendas' se cargue por primera vez
+
+
 // =============================
 // 1. CONFIGURACIÓN Y VARIABLES
 // =============================
@@ -268,43 +288,48 @@ function filtrarMapa2(clusterId) {
 }
 
 function hacerZoomVivienda(lat, lon, precio) {
-    // 1. Efecto en el mapa (lo que ya hacía)
-    map2.setView([lat, lon], 17); // Zoom más cercano para detalle
-    L.popup()
-        .setLatLng([lat, lon])
+    map2.setView([lat, lon], 17);
+    L.popup().setLatLng([lat, lon])
         .setContent(`<b>Vivienda Seleccionada</b><br>Precio: $${precio.toLocaleString()}`)
         .openOn(map2);
 
-    // 2. BUSCAR EL REGISTRO COMPLETO EN EL JSON
-    // Buscamos el punto que coincida con lat y lon
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
 
     if (registro) {
-        // 3. CONSTRUIR LA TABLA DE DETALLE
-        let htmlDetalle = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 10px;">
-                <div style="background: #fff; padding: 8px; border-radius: 4px; border-left: 4px solid #fbc02d;">
-                    <small>PRECIO:</small><br><strong>$${registro.Precio.toLocaleString()}</strong>
-                </div>
-        `;
+        if (Object.keys(limitesGlobales).length === 0) calcularLimites();
 
-        // Recorremos las 15 variables para mostrar sus valores originales
-        variables.forEach(v => {
-            let valor = registro[v];
-            // Si el valor es numérico, lo redondeamos para que se vea limpio
-            if (typeof valor === 'number') valor = valor.toFixed(3);
+        let htmlDetalle = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 10px;">`;
 
-            htmlDetalle += `
-                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee;">
-                    <small style="color: #777; text-transform: uppercase; font-size: 0.65rem;">${v.replace(/_/g, ' ')}:</small><br>
-                    <strong>${valor}</strong>
+        // Función auxiliar para crear el cuadrito con barra
+        const crearCuadro = (etiqueta, valor, clave) => {
+            const min = limitesGlobales[clave].min;
+            const max = limitesGlobales[clave].max;
+            // Calculamos el porcentaje (regla de 3 simple)
+            let porcentaje = ((valor - min) / (max - min)) * 100;
+            if (porcentaje > 100) porcentaje = 100;
+            if (porcentaje < 0) porcentaje = 0;
+
+            return `
+                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; position: relative; overflow: hidden;">
+                    <small style="color: #777; text-transform: uppercase; font-size: 0.6rem;">${etiqueta}:</small><br>
+                    <strong style="font-size: 0.9rem;">${typeof valor === 'number' ? valor.toLocaleString() : valor}</strong>
+                    <div style="width: 100%; height: 4px; background: #eee; margin-top: 6px; border-radius: 2px;">
+                        <div style="width: ${porcentaje}%; height: 100%; background: #4caf50; border-radius: 2px;"></div>
+                    </div>
                 </div>
             `;
+        };
+
+        // 1. Cuadro de Precio
+        htmlDetalle += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
+
+        // 2. Cuadros de las 15 variables
+        variables.forEach(v => {
+            const nombreLimpio = v.replace(/_/g, ' ');
+            htmlDetalle += crearCuadro(nombreLimpio, registro[v], v);
         });
 
         htmlDetalle += `</div>`;
-        
-        // Inyectar en el HTML
         document.getElementById("detalle-vivienda").innerHTML = htmlDetalle;
     }
 }
