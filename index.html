@@ -7,96 +7,100 @@
     <style>
         body { font-family: sans-serif; margin: 0; padding: 0; line-height: 1.4; background-color: #f4f4f9; }
         
-        /* Contenedor principal en Flexbox */
         .dashboard-container {
             display: flex;
-            height: 100vh; /* Ocupa toda la altura de la pantalla */
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* PANEL IZQUIERDO: Entradas de datos */
         .sidebar {
-            width: 350px;
+            width: 320px; /* Un poco más angosta para dar espacio a los mapas */
             background: white;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            overflow-y: auto; /* Scroll independiente si la lista es larga */
+            overflow-y: auto;
             z-index: 10;
         }
 
-        /* PANEL DERECHO: Mapas y Resultados */
         .main-content {
             flex-grow: 1;
             padding: 20px;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: 1fr 1fr; /* Divide el espacio en dos columnas para mapas */
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
             align-content: start;
         }
 
-        /* Títulos de sección */
-        h2, h3 { margin-top: 0; color: #333; font-size: 1.1rem; }
+        h2, h3 { margin-top: 0; color: #333; font-size: 1rem; }
 
-        /* Lista arrastrable */
+        /* --- LISTA DE VARIABLES MÁS PEQUEÑA --- */
         #variables { 
             display: flex; 
             flex-direction: column; 
-            gap: 5px; 
+            gap: 4px; /* Espacio mínimo entre cuadros */
             background: #f9f9f9; 
-            padding: 10px; 
+            padding: 8px; 
             border-radius: 8px; 
             border: 2px dashed #ddd;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .variable-item {
-            padding: 8px;
+            padding: 5px 10px; /* Cuadros más delgados */
             background: white;
             border: 1px solid #ccc;
             border-radius: 4px;
             cursor: grab;
-            font-size: 0.85rem;
+            font-size: 0.75rem; /* Letra más pequeña */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
+
+        .variable-item span {
+            color: #bbb;
+            margin-right: 8px;
+            font-size: 0.7rem;
+        }
+        /* -------------------------------------- */
 
         .seccion-input {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
+
+        .seccion-input label { font-size: 0.85rem; font-weight: bold; }
 
         .seccion-input input {
             width: 100%;
-            margin-bottom: 10px;
-            padding: 5px;
+            margin-bottom: 8px;
+            padding: 4px;
             box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
-        /* Mapas */
         .map-container { 
-            height: 400px; 
+            height: 380px; 
             width: 100%; 
             border: 1px solid #ccc; 
             border-radius: 8px;
             background: white;
         }
 
-        /* Tablas */
         .tabla-wrapper {
-            grid-column: span 1; /* Ocupan una columna cada una */
+            grid-column: span 1;
             background: white;
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
         }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
         th { background-color: #f2f2f2; position: sticky; top: 0; }
-
-        tr.fila-cluster { cursor: pointer; }
-        tr.fila-cluster:hover { background-color: #f0f8ff !important; }
 
         .etiqueta-numero {
             background: transparent !important;
@@ -107,16 +111,16 @@
             text-shadow: 1px 1px 2px black;
         }
 
-        /* El botón de calcular al final del sidebar */
         .btn-calcular {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             font-weight: bold;
             cursor: pointer;
+            transition: background 0.3s;
         }
 
         .btn-calcular:hover { background-color: #0056b3; }
@@ -127,7 +131,7 @@
     <div class="dashboard-container">
         <div class="sidebar">
             <h2>Configuración</h2>
-            <p style="font-size: 0.8rem;">Arrastra para priorizar (Arriba = más importante).</p>
+            <p style="font-size: 0.75rem; color: #666;">Arrastra las variables por importancia:</p>
             
             <div id="variables">
                 </div>
@@ -143,7 +147,7 @@
             </div>
 
             <button class="btn-calcular" onclick="calcular()">CALCULAR</button>
-            <p id="resultado" style="font-size: 0.85rem; color: blue; margin-top: 10px;"></p>
+            <p id="resultado" style="font-size: 0.8rem; color: blue; margin-top: 10px;"></p>
         </div>
 
         <div class="main-content">
@@ -158,13 +162,13 @@
             </div>
 
             <div class="tabla-wrapper">
-                <h3>Top 10 Clusters</h3>
-                <div id="tabla-clusters" style="max-height: 300px; overflow-y: auto;"></div>
+                <h3>Top 10 Clusters más afines</h3>
+                <div id="tabla-clusters" style="max-height: 250px; overflow-y: auto;"></div>
             </div>
 
             <div class="tabla-wrapper">
                 <h3>Viviendas del Cluster</h3>
-                <div id="tabla-viviendas" style="max-height: 300px; overflow-y: auto;"></div>
+                <div id="tabla-viviendas" style="max-height: 250px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
