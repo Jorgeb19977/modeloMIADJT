@@ -306,13 +306,13 @@ function hacerZoomVivienda(lat, lon, precio) {
             porcentaje = Math.max(0, Math.min(100, porcentaje));
 
             return `
-                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: space-between; min-height: 85px;">
                     <div>
-                        <small style="color: #777; text-transform: uppercase; font-size: 0.6rem;">${etiqueta}:</small><br>
+                        <small style="color: #777; text-transform: uppercase; font-size: 0.6rem; display: block; margin-bottom: 2px;">${etiqueta}:</small>
                         <strong style="font-size: 0.9rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
-                        ${textoExtra ? `<br><span style="font-size: 0.7rem; color: #2e7d32; font-weight: bold;">${textoExtra}</span>` : ""}
+                        ${textoExtra ? `<br><span style="font-size: 0.7rem; color: #2e7d32; font-weight: bold; display: block; margin-top: 2px; line-height: 1.1;">${textoExtra}</span>` : ""}
                     </div>
-                    <div style="width: 100%; height: 4px; background: #eee; margin-top: 6px; border-radius: 2px;">
+                    <div style="width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px;">
                         <div style="width: ${porcentaje}%; height: 100%; background: #4caf50; border-radius: 2px;"></div>
                     </div>
                 </div>
@@ -322,28 +322,40 @@ function hacerZoomVivienda(lat, lon, precio) {
         // 1. Cuadro de Precio
         htmlDetalle += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
 
-        // 2. Cuadros de las variables
+        // 2. Mapeo de variables numéricas a sus nombres descriptivos
+        const mapaNombres = {
+            "Dist_CC_m": "CC_Cercano",
+            "Dist_Metro_m": "Metro_Ref",
+            "Dist_Gastro_m": "Gastro_Cercano",
+            "Dist_Educa_m": "Educa",
+            "Dist_TM_m": "Estacion_TM_Cercana",
+            "Dist_Salud_m": "IPS_Cercana",
+            "Vulnerabilidad_Agua_num": "Vulnerabilidad_Agua"
+        };
+
+        // 3. Generar cuadros para las 15 variables
         variables.forEach(v => {
             let nombreMostrar = v.replace(/_/g, ' ');
             let valorAMostrar = registro[v];
             let claveLimites = v;
             let textoAdicional = "";
 
-            // AJUSTE 1: Estrato Manzana
+            // Caso especial: Estrato
             if (v === "Estrato_Manzana_score") {
                 nombreMostrar = "Estrato Manzana";
-                valorAMostrar = registro["Estrato_Manzana"]; 
-                claveLimites = "Estrato_Manzana_score"; 
-            }
-
-            // AJUSTE 2: Distancia a CC + Nombre del CC
-            // Asegúrate de que "Dist_CC_m" sea el nombre exacto de la variable en tu array 'variables'
-            if (v === "Dist_CC_m") {
-                nombreMostrar = "Dist. Centro Comercial";
-                // Si existe el nombre del CC en el registro, lo guardamos para mostrarlo
-                if (registro["CC_Cercano"]) {
-                    textoAdicional = registro["CC_Cercano"];
+                valorAMostrar = registro["Estrato_Manzana"];
+                claveLimites = "Estrato_Manzana_score";
+            } 
+            // Casos con etiquetas de texto (CC, Metro, TM, etc.)
+            else if (mapaNombres[v]) {
+                const columnaTexto = mapaNombres[v];
+                if (registro[columnaTexto]) {
+                    textoAdicional = registro[columnaTexto];
                 }
+                
+                // Limpiar nombres de etiquetas para que no se vean tan técnicos
+                if (v.startsWith("Dist_")) nombreMostrar = "Dist. " + nombreMostrar.replace("Dist ", "").replace(" m", "");
+                if (v.includes("Vulnerabilidad")) nombreMostrar = "Vuln. Agua";
             }
 
             htmlDetalle += crearCuadro(nombreMostrar, valorAMostrar, claveLimites, textoAdicional);
