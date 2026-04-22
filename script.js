@@ -322,40 +322,41 @@ function hacerZoomVivienda(lat, lon, precio) {
         // 1. Cuadro de Precio
         htmlDetalle += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
 
-        // 2. Mapeo de variables numéricas a sus nombres descriptivos
+        // 2. Mapeo actualizado (IPS_Cercana eliminado de aquí)
         const mapaNombres = {
             "Dist_CC_m": "CC_Cercano",
             "Dist_Metro_m": "Metro_Ref",
             "Dist_Gastro_m": "Gastro_Cercano",
             "Dist_Educa_m": "Educa",
             "Dist_TM_m": "Estacion_TM_Cercana",
-            "Dist_Salud_m": "IPS_Cercana",
             "Vulnerabilidad_Agua_num": "Vulnerabilidad_Agua"
         };
 
-        // 3. Generar cuadros para las 15 variables
+        // 3. Generar cuadros
         variables.forEach(v => {
             let nombreMostrar = v.replace(/_/g, ' ');
             let valorAMostrar = registro[v];
             let claveLimites = v;
             let textoAdicional = "";
 
-            // Caso especial: Estrato
             if (v === "Estrato_Manzana_score") {
                 nombreMostrar = "Estrato Manzana";
                 valorAMostrar = registro["Estrato_Manzana"];
                 claveLimites = "Estrato_Manzana_score";
             } 
-            // Casos con etiquetas de texto (CC, Metro, TM, etc.)
             else if (mapaNombres[v]) {
                 const columnaTexto = mapaNombres[v];
                 if (registro[columnaTexto]) {
                     textoAdicional = registro[columnaTexto];
                 }
-                
-                // Limpiar nombres de etiquetas para que no se vean tan técnicos
-                if (v.startsWith("Dist_")) nombreMostrar = "Dist. " + nombreMostrar.replace("Dist ", "").replace(" m", "");
-                if (v.includes("Vulnerabilidad")) nombreMostrar = "Vuln. Agua";
+            }
+
+            // Limpieza visual de etiquetas
+            if (v.startsWith("Dist_")) {
+                nombreMostrar = "Dist. " + nombreMostrar.replace("Dist ", "").replace(" m", "");
+            }
+            if (v === "Vulnerabilidad_Agua_num") {
+                nombreMostrar = "Vuln. Agua";
             }
 
             htmlDetalle += crearCuadro(nombreMostrar, valorAMostrar, claveLimites, textoAdicional);
