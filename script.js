@@ -300,15 +300,18 @@ function hacerZoomVivienda(lat, lon, precio) {
 
         let htmlDetalle = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 10px;">`;
 
-        const crearCuadro = (etiqueta, valor, claveParaLimites) => {
+        const crearCuadro = (etiqueta, valor, claveParaLimites, textoExtra = "") => {
             const limites = limitesGlobales[claveParaLimites] || { min: 0, max: 1 };
             let porcentaje = ((valor - limites.min) / (limites.max - limites.min)) * 100;
             porcentaje = Math.max(0, Math.min(100, porcentaje));
 
             return `
-                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; position: relative; overflow: hidden;">
-                    <small style="color: #777; text-transform: uppercase; font-size: 0.6rem;">${etiqueta}:</small><br>
-                    <strong style="font-size: 0.9rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(3) : valor.toLocaleString()}</strong>
+                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <small style="color: #777; text-transform: uppercase; font-size: 0.6rem;">${etiqueta}:</small><br>
+                        <strong style="font-size: 0.9rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
+                        ${textoExtra ? `<br><span style="font-size: 0.7rem; color: #2e7d32; font-weight: bold;">${textoExtra}</span>` : ""}
+                    </div>
                     <div style="width: 100%; height: 4px; background: #eee; margin-top: 6px; border-radius: 2px;">
                         <div style="width: ${porcentaje}%; height: 100%; background: #4caf50; border-radius: 2px;"></div>
                     </div>
@@ -324,17 +327,26 @@ function hacerZoomVivienda(lat, lon, precio) {
             let nombreMostrar = v.replace(/_/g, ' ');
             let valorAMostrar = registro[v];
             let claveLimites = v;
+            let textoAdicional = "";
 
-            // CAMBIO ESPECÍFICO: Si la variable es la del score de estrato,
-            // mostramos el valor real del estrato en su lugar.
-            if (v === "Estrato_Manzana_score") { // Asegúrate de que este sea el nombre exacto en tu array 'variables'
+            // AJUSTE 1: Estrato Manzana
+            if (v === "Estrato_Manzana_score") {
                 nombreMostrar = "Estrato Manzana";
                 valorAMostrar = registro["Estrato_Manzana"]; 
-                // La barra seguirá basándose en los límites del score para mantener la lógica de "qué tan bueno es"
                 claveLimites = "Estrato_Manzana_score"; 
             }
 
-            htmlDetalle += crearCuadro(nombreMostrar, valorAMostrar, claveLimites);
+            // AJUSTE 2: Distancia a CC + Nombre del CC
+            // Asegúrate de que "Dist_CC_m" sea el nombre exacto de la variable en tu array 'variables'
+            if (v === "Dist_CC_m") {
+                nombreMostrar = "Dist. Centro Comercial";
+                // Si existe el nombre del CC en el registro, lo guardamos para mostrarlo
+                if (registro["CC_Cercano"]) {
+                    textoAdicional = registro["CC_Cercano"];
+                }
+            }
+
+            htmlDetalle += crearCuadro(nombreMostrar, valorAMostrar, claveLimites, textoAdicional);
         });
 
         htmlDetalle += `</div>`;
