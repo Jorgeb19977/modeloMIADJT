@@ -21,23 +21,19 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-    // Mapa 1: General (Bogotá)
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
-    // Mapa 2A: Contexto del Cluster
     map2A = L.map('map2A', { zoomControl: false }).setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
-    // Mapa 2B: Zoom y Selección (Económico)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
 
-    // Lista Arrastrable de Variables
     const container = document.getElementById("variables");
     variables.forEach((v) => {
         const div = document.createElement("div");
@@ -60,7 +56,6 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
-    // Carga de Datos
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
@@ -98,14 +93,14 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-// Escala de color para el Score Económico (Verde -> Rojo)
+// NUEVA ESCALA: AZUL (Mejor) -> ROJO (Peor)
 function colorScoreEconomico(sE, maxSE) {
     let x = maxSE !== 0 ? sE / maxSE : 0;
-    if (x <= 0.2) return "#2ecc71"; // Verde
-    if (x <= 0.4) return "#a2d149"; // Verde lima
-    if (x <= 0.6) return "#f1c40f"; // Amarillo
-    if (x <= 0.8) return "#e67e22"; // Naranja
-    return "#e74c3c";               // Rojo
+    if (x <= 0.2) return "#0047FF"; // Azul Eléctrico (Máxima afinidad)
+    if (x <= 0.4) return "#00CCFF"; // Cian
+    if (x <= 0.6) return "#FFD700"; // Oro/Amarillo
+    if (x <= 0.8) return "#FF8C00"; // Naranja oscuro
+    return "#FF0000";               // Rojo
 }
 
 function resaltarClusterEnMapa1(clusterId) {
@@ -160,7 +155,6 @@ function calcular() {
     const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
     const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
-    // Mapa General
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
@@ -168,7 +162,6 @@ function calcular() {
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
     });
 
-    // Tabla Clusters
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersOrdenados.forEach(c => {
         h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
@@ -188,7 +181,6 @@ function filtrarMapa2(clusterId) {
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
-    // MAPA 2A: Contexto Global
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
@@ -200,7 +192,6 @@ function filtrarMapa2(clusterId) {
     });
     map2A.setView([4.65, -74.1], 11);
 
-    // Lógica Económica
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
@@ -210,7 +201,6 @@ function filtrarMapa2(clusterId) {
 
     const maxSEActual = vOrdenadas.length > 0 ? Math.max(...vOrdenadas.map(v => v.sE)) : 0;
 
-    // Tabla Viviendas
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
         const filaId = `fila-${v.lat}-${v.lon}`.replace(/\./g, '_');
@@ -219,7 +209,6 @@ function filtrarMapa2(clusterId) {
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // MAPA 2B: Marcadores con escala económica y click
     vOrdenadas.forEach((p, i) => {
         let colEco = colorScoreEconomico(p.sE, maxSEActual);
 
@@ -233,7 +222,7 @@ function filtrarMapa2(clusterId) {
         
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
         marcador.viviendaID = `${p.lat}-${p.lon}`; 
-        marcador.colorOriginal = colEco; // Guardar para resetear resaltado
+        marcador.colorOriginal = colEco; 
         
         marcador.on('click', () => hacerZoomVivienda(p.lat, p.lon, p.Precio));
     });
@@ -247,11 +236,10 @@ function filtrarMapa2(clusterId) {
 function hacerZoomVivienda(lat, lon, precio) {
     map2B.setView([lat, lon], 17);
 
-    // Resaltar Marcador en Mapa 2B
     capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
-                layer.setStyle({ color: 'orange', fillColor: 'orange', weight: 6, radius: 12 });
+                layer.setStyle({ color: '#FF00FF', fillColor: '#FF00FF', weight: 6, radius: 12 }); // Resaltado Fucsia/Magenta para que destaque sobre el azul
                 layer.bringToFront();
             } else {
                 layer.setStyle({ color: layer.colorOriginal, fillColor: layer.colorOriginal, weight: 2, radius: 9 });
@@ -259,7 +247,6 @@ function hacerZoomVivienda(lat, lon, precio) {
         }
     });
 
-    // Resaltar Fila en Tabla y Scroll
     document.querySelectorAll("#tabla-viviendas tr").forEach(tr => {
         tr.style.backgroundColor = ""; 
         tr.style.fontWeight = "normal";
@@ -272,7 +259,6 @@ function hacerZoomVivienda(lat, lon, precio) {
         fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Ficha Técnica
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
     if (!registro) return;
 
