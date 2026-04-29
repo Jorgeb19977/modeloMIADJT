@@ -7,7 +7,7 @@ let viviendas = [];
 let map, map2A, map2B; 
 let capaPuntos, capaPuntos2A, capaPuntos2B, capaResaltado;
 let ultimoResultadoClusters = []; 
-let scoresPorClusterId = {}; // Objeto para búsqueda rápida de scores
+let scoresPorClusterId = {}; 
 
 const variables = [
     "Dist_Metro_m", "Dist_Gastro_m", "Dist_Educa_m", "Dist_TM_m",
@@ -118,7 +118,6 @@ function calcular() {
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // Resetear el mapa de búsqueda rápida
     scoresPorClusterId = {};
 
     ultimoResultadoClusters = centroides.map((cluster, index) => {
@@ -127,16 +126,13 @@ function calcular() {
         let vEnCluster = viviendas.filter(v => v.Clusters === index);
         let totalScoreE = vEnCluster.reduce((acc, v) => acc + (Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0), 0);
 
-        let data = {
+        scoresPorClusterId[index] = sCluster;
+        return {
             id: index,
             scoreCluster: sCluster,
             puntos: vEnCluster.length,
             scoreEProm: vEnCluster.length > 0 ? (totalScoreE / vEnCluster.length) : 0
         };
-        
-        // Guardar en el buscador rápido por ID real del cluster
-        scoresPorClusterId[index] = sCluster;
-        return data;
     }).sort((a, b) => a.scoreCluster - b.scoreCluster);
 
     renderizarVistasFiltradas();
@@ -148,7 +144,7 @@ function calcular() {
 }
 
 // ==========================================
-// 5. RENDERIZADO FILTRADO (SLIDER)
+// 5. RENDERIZADO FILTRADO Y EVENTOS MAPA 1
 // ==========================================
 function actualizarFiltroScore(valor) {
     document.getElementById("score-valor").innerText = valor + "%";
@@ -161,24 +157,37 @@ function renderizarVistasFiltradas() {
     const sliderVal = parseFloat(document.getElementById("score-slider").value);
     const umbralPorcentaje = sliderVal / 100;
     
-    // Obtener min/max de los scores calculados
     const scoresArray = Object.values(scoresPorClusterId);
     const minGlobal = Math.min(...scoresArray);
     const maxGlobal = Math.max(...scoresArray);
-    
     const scoreMaximoPermitido = minGlobal + (maxGlobal - minGlobal) * umbralPorcentaje;
 
-    // A. Filtrar Mapa 1 (Usando el buscador por ID)
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
-        let sc = scoresPorClusterId[p.Clusters]; // Búsqueda directa y segura
+        let sc = scoresPorClusterId[p.Clusters]; 
         if (sc !== undefined && sc <= scoreMaximoPermitido) {
             let col = colorScore(sc, minGlobal, maxGlobal);
-            L.circleMarker([p.lat, p.lon], { radius: 2.5, color: col, stroke: false, fillOpacity: 0.7 }).addTo(capaPuntos);
+            
+            // CREACIÓN DEL PUNTO CON EVENTO DE CLIC
+            let marcador = L.circleMarker([p.lat, p.lon], { 
+                radius: 3, 
+                color: col, 
+                stroke: true, 
+                weight: 0.5,
+                fillOpacity: 0.8 
+            });
+
+            // Al hacer clic, filtramos el dashboard por el cluster de este punto
+            marcador.on('click', function() {
+                filtrarMapa2(p.Clusters);
+                // Opcional: Resaltar visualmente en la tabla lateral
+                resaltarClusterEnMapa1(p.Clusters);
+            });
+
+            marcador.addTo(capaPuntos);
         }
     });
 
-    // B. Filtrar Tabla 1
     let clustersFiltrados = ultimoResultadoClusters.filter(c => c.scoreCluster <= scoreMaximoPermitido);
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersFiltrados.forEach(c => {
