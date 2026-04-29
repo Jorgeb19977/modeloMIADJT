@@ -4,7 +4,8 @@
 let limitesGlobales = {};
 let centroides = [];
 let viviendas = [];
-let map, map2, capaPuntos, capaPuntos2, capaResaltado;
+let map, map2A, map2B; 
+let capaPuntos, capaPuntos2A, capaPuntos2B, capaResaltado;
 
 const variables = [
     "Dist_Metro_m", "Dist_Gastro_m", "Dist_Educa_m", "Dist_TM_m",
@@ -20,16 +21,21 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-    // Inicializar Mapa 1
+    // Inicializar Mapa 1: General
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
-    capaResaltado = L.layerGroup().addTo(map); // Capa para el cuadro rojo al pasar el mouse
+    capaResaltado = L.layerGroup().addTo(map);
 
-    // Inicializar Mapa 2
-    map2 = L.map('map2').setView([4.65, -74.1], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
-    capaPuntos2 = L.layerGroup().addTo(map2);
+    // Inicializar Mapa 2A: Contexto (Gris y Azul Oscuro)
+    map2A = L.map('map2A').setView([4.65, -74.1], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
+    capaPuntos2A = L.layerGroup().addTo(map2A);
+
+    // Inicializar Mapa 2B: Detalle (Zoom y Números)
+    map2B = L.map('map2B').setView([4.65, -74.1], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
+    capaPuntos2B = L.layerGroup().addTo(map2B);
 
     // Generar Lista Arrastrable de Variables
     const container = document.getElementById("variables");
@@ -92,7 +98,6 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-// Resaltado cuadro rojo en Mapa 1
 function resaltarClusterEnMapa1(clusterId) {
     capaResaltado.clearLayers();
     const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
@@ -145,7 +150,7 @@ function calcular() {
     const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
     const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
-    // Mapa 1
+    // Mapa 1: General
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
@@ -153,7 +158,7 @@ function calcular() {
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
     });
 
-    // Tabla 1 (Todos los clusters)
+    // Tabla 1: Todos los clusters
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersOrdenados.forEach(c => {
         h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
@@ -167,18 +172,34 @@ function calcular() {
 }
 
 // ==========================================
-// 5. MAPA DE DETALLE Y VIVIENDAS
+// 5. FILTRADO Y MAPAS DE DETALLE (2A y 2B)
 // ==========================================
 function filtrarMapa2(clusterId) {
-    capaPuntos2.clearLayers();
-    const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
+    // Limpiar ambos mapas de detalle
+    capaPuntos2A.clearLayers();
+    capaPuntos2B.clearLayers();
 
+    // MAPA 2A: Contexto Global (Gris y Azul Oscuro)
+    viviendas.forEach(p => {
+        let esDelCluster = (p.Clusters === clusterId);
+        L.circleMarker([p.lat, p.lon], {
+            radius: 2,
+            color: esDelCluster ? "#00008B" : "#D3D3D3", // Azul Oscuro vs Gris Claro
+            stroke: false,
+            fillOpacity: esDelCluster ? 0.9 : 0.4
+        }).addTo(capaPuntos2A);
+    });
+    map2A.setView([4.65, -74.1], 11); // Resetear vista para ver toda la ciudad
+
+    // MAPA 2B: Detalle con Zoom y Números
+    const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
     let vOrdenadas = vFiltradas
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
+    // Actualizar Tabla de Viviendas
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
         h2 += `<tr><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
@@ -186,23 +207,24 @@ function filtrarMapa2(clusterId) {
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
+    // Dibujar puntos numerados en Mapa 2B
     vOrdenadas.forEach((p, i) => {
-        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2);
+        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2B);
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
-        marcador.viviendaID = `${p.lat}-${p.lon}`; // ID para resaltado
+        marcador.viviendaID = `${p.lat}-${p.lon}`; 
     });
 
-    if (vOrdenadas.length > 0) map2.fitBounds(new L.featureGroup(capaPuntos2.getLayers()).getBounds());
+    if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds());
 }
 
 // ==========================================
 // 6. ZOOM Y FICHA TÉCNICA
 // ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
-    map2.setView([lat, lon], 17);
+    map2B.setView([lat, lon], 17); // El zoom ocurre en el mapa de detalle (2B)
 
-    // Resaltado de marcador en Mapa 2
-    capaPuntos2.eachLayer(layer => {
+    // Resaltado de marcador naranja en Mapa 2B
+    capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
                 layer.setStyle({ color: 'orange', weight: 6, radius: 12 });
@@ -247,7 +269,6 @@ function hacerZoomVivienda(lat, lon, precio) {
         if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
         else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
         
-        // Limpieza de nombres Dist_
         if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
         if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
 

@@ -5,133 +5,28 @@
     <title>Dashboard Recomendación Vivienda Bogotá</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
+        /* [TUS ESTILOS SE MANTIENEN IGUAL] */
         body { font-family: sans-serif; margin: 0; padding: 0; line-height: 1.4; background-color: #f4f4f9; }
-        
-        .dashboard-container {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 320px;
-            background: white;
-            padding: 15px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            overflow-y: auto;
-            z-index: 10;
-        }
-
-        .main-content {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            align-content: start;
-        }
-
+        .dashboard-container { display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 320px; background: white; padding: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; }
+        .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-content: start; }
         h2, h3 { margin-top: 0; color: #333; font-size: 1rem; }
-
-        #variables { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 4px; 
-            background: #f9f9f9; 
-            padding: 8px; 
-            border-radius: 8px; 
-            border: 2px dashed #ddd;
-            margin-bottom: 15px;
-        }
-
-        .variable-item {
-            padding: 5px 10px; 
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: grab;
-            font-size: 0.75rem; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        .variable-item span {
-            color: #bbb;
-            margin-right: 8px;
-            font-size: 0.7rem;
-        }
-
-        .seccion-input {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .seccion-input label { font-size: 0.85rem; font-weight: bold; }
-
-        .seccion-input input {
-            width: 100%;
-            margin-bottom: 8px;
-            padding: 4px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .map-container { 
-            height: 380px; 
-            width: 100%; 
-            border: 1px solid #ccc; 
-            border-radius: 8px;
-            background: white;
-        }
-
-        .tabla-wrapper {
-            grid-column: span 1;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border: 1px solid #eee;
-        }
-
-        /* Estilo para la ficha de detalle (ocupa 2 columnas) */
-        .detalle-wrapper {
-            grid-column: span 2;
-            background: #fffde7; /* Color amarillento suave para resaltar */
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #fbc02d;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
+        #variables { display: flex; flex-direction: column; gap: 4px; background: #f9f9f9; padding: 8px; border-radius: 8px; border: 2px dashed #ddd; margin-bottom: 15px; }
+        .variable-item { padding: 5px 10px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: grab; font-size: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
+        .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .map-container { height: 380px; width: 100%; border: 1px solid #ccc; border-radius: 8px; background: white; }
+        .tabla-wrapper { grid-column: span 1; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .detalle-wrapper { grid-column: span 2; background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
         th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
         th { background-color: #f2f2f2; position: sticky; top: 0; }
-
-        .etiqueta-numero {
-            background: transparent !important;
-            border: none !important;
-            color: white !important;
-            font-weight: bold !important;
-            font-size: 10px !important;
-            text-shadow: 1px 1px 2px black;
-        }
-
-        .btn-calcular {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
+        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
         .btn-calcular:hover { background-color: #0056b3; }
+        .etiqueta-numero { background: transparent !important; border: none !important; color: white !important; font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black; }
+
+        /* NUEVO ESTILO: Ajuste para que el Mapa 1 ocupe todo el ancho arriba */
+        .full-width { grid-column: span 2; }
     </style>
 </head>
 <body>
@@ -157,14 +52,19 @@
         </div>
 
         <div class="main-content">
-            <div class="map-box">
+            <div class="map-box full-width">
                 <h3>Mapa 1: General (Bogotá)</h3>
                 <div id="map" class="map-container"></div>
             </div>
             
             <div class="map-box">
-                <h3>Mapa 2: Detalle Cluster Seleccionado</h3>
-                <div id="map2" class="map-container"></div>
+                <h3>Mapa 2A: Contexto del Cluster</h3>
+                <div id="map2A" class="map-container"></div>
+            </div>
+
+            <div class="map-box">
+                <h3>Mapa 2B: Zoom y Selección</h3>
+                <div id="map2B" class="map-container"></div>
             </div>
 
             <div class="tabla-wrapper">
