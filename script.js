@@ -21,23 +21,23 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-    // Mapa 1: General
+    // Mapa 1: General (Bogotá)
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
-    // Mapa 2A: Contexto (Gris/Azul)
+    // Mapa 2A: Contexto del Cluster
     map2A = L.map('map2A', { zoomControl: false }).setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
-    // Mapa 2B: Detalle (Zoom)
+    // Mapa 2B: Zoom y Selección (Económico)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
 
-    // Lista Arrastrable
+    // Lista Arrastrable de Variables
     const container = document.getElementById("variables");
     variables.forEach((v) => {
         const div = document.createElement("div");
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
-    // Cargar JSONs
+    // Carga de Datos
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
@@ -68,10 +68,10 @@ document.addEventListener("DOMContentLoaded", function () {
         centroides = dataC;
         viviendas = dataV;
         calcularLimites(); 
-        document.getElementById("resultado").innerText = "Datos listos para calcular.";
+        document.getElementById("resultado").innerText = "Datos cargados. Configure y calcule.";
     }).catch(err => {
         console.error("Error:", err);
-        document.getElementById("resultado").innerText = "Error al cargar archivos.";
+        document.getElementById("resultado").innerText = "Error al cargar archivos JSON.";
     });
 });
 
@@ -96,6 +96,16 @@ function colorScore(score, minScore, maxScore) {
     if (x <= 0.7) return "#FF9999";
     if (x <= 0.9) return "#FF0000";
     return "#8B0000";
+}
+
+// Escala de color para el Score Económico (Verde -> Rojo)
+function colorScoreEconomico(sE, maxSE) {
+    let x = maxSE !== 0 ? sE / maxSE : 0;
+    if (x <= 0.2) return "#2ecc71"; // Verde
+    if (x <= 0.4) return "#a2d149"; // Verde lima
+    if (x <= 0.6) return "#f1c40f"; // Amarillo
+    if (x <= 0.8) return "#e67e22"; // Naranja
+    return "#e74c3c";               // Rojo
 }
 
 function resaltarClusterEnMapa1(clusterId) {
@@ -150,6 +160,7 @@ function calcular() {
     const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
     const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
+    // Mapa General
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
@@ -157,6 +168,7 @@ function calcular() {
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
     });
 
+    // Tabla Clusters
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersOrdenados.forEach(c => {
         h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
@@ -176,7 +188,7 @@ function filtrarMapa2(clusterId) {
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
-    // MAPA 2A: Contexto
+    // MAPA 2A: Contexto Global
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
@@ -188,7 +200,7 @@ function filtrarMapa2(clusterId) {
     });
     map2A.setView([4.65, -74.1], 11);
 
-    // Lógica de Precios
+    // Lógica Económica
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
@@ -196,7 +208,9 @@ function filtrarMapa2(clusterId) {
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
-    // TABLA DE VIVIENDAS CON IDs DE FILA
+    const maxSEActual = vOrdenadas.length > 0 ? Math.max(...vOrdenadas.map(v => v.sE)) : 0;
+
+    // Tabla Viviendas
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
         const filaId = `fila-${v.lat}-${v.lon}`.replace(/\./g, '_');
@@ -205,11 +219,21 @@ function filtrarMapa2(clusterId) {
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // MAPA 2B: Puntos con Click
+    // MAPA 2B: Marcadores con escala económica y click
     vOrdenadas.forEach((p, i) => {
-        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2B);
+        let colEco = colorScoreEconomico(p.sE, maxSEActual);
+
+        let marcador = L.circleMarker([p.lat, p.lon], { 
+            radius: 9, 
+            color: colEco, 
+            fillColor: colEco,
+            fillOpacity: 0.9, 
+            weight: 2 
+        }).addTo(capaPuntos2B);
+        
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
         marcador.viviendaID = `${p.lat}-${p.lon}`; 
+        marcador.colorOriginal = colEco; // Guardar para resetear resaltado
         
         marcador.on('click', () => hacerZoomVivienda(p.lat, p.lon, p.Precio));
     });
@@ -223,19 +247,19 @@ function filtrarMapa2(clusterId) {
 function hacerZoomVivienda(lat, lon, precio) {
     map2B.setView([lat, lon], 17);
 
-    // 1. Resaltar Marcador
+    // Resaltar Marcador en Mapa 2B
     capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
-                layer.setStyle({ color: 'orange', weight: 6, radius: 12 });
+                layer.setStyle({ color: 'orange', fillColor: 'orange', weight: 6, radius: 12 });
                 layer.bringToFront();
             } else {
-                layer.setStyle({ color: 'blue', weight: 2, radius: 8 });
+                layer.setStyle({ color: layer.colorOriginal, fillColor: layer.colorOriginal, weight: 2, radius: 9 });
             }
         }
     });
 
-    // 2. Resaltar Fila en Tabla y Scroll
+    // Resaltar Fila en Tabla y Scroll
     document.querySelectorAll("#tabla-viviendas tr").forEach(tr => {
         tr.style.backgroundColor = ""; 
         tr.style.fontWeight = "normal";
@@ -248,7 +272,7 @@ function hacerZoomVivienda(lat, lon, precio) {
         fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // 3. Ficha Técnica
+    // Ficha Técnica
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
     if (!registro) return;
 
@@ -278,9 +302,11 @@ function hacerZoomVivienda(lat, lon, precio) {
     variables.forEach(v => {
         let nom = v.replace(/_/g, ' ');
         let val = registro[v];
-        let extra = (v === "Estrato_Manzana_score") ? "" : (mapaNombres[v] && registro[mapaNombres[v]] ? `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>` : "");
+        let extra = "";
         
         if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
+        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
+        
         if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
         if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
 
