@@ -21,19 +21,23 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
+    // Mapa 1: General
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
-    map2A = L.map('map2A').setView([4.65, -74.1], 11);
+    // Mapa 2A: Contexto (Gris/Azul)
+    map2A = L.map('map2A', { zoomControl: false }).setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
+    // Mapa 2B: Detalle (Zoom)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
 
+    // Lista Arrastrable
     const container = document.getElementById("variables");
     variables.forEach((v) => {
         const div = document.createElement("div");
@@ -56,6 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
+    // Cargar JSONs
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
@@ -63,10 +68,10 @@ document.addEventListener("DOMContentLoaded", function () {
         centroides = dataC;
         viviendas = dataV;
         calcularLimites(); 
-        document.getElementById("resultado").innerText = "Datos listos. Configure y calcule.";
+        document.getElementById("resultado").innerText = "Datos listos para calcular.";
     }).catch(err => {
         console.error("Error:", err);
-        document.getElementById("resultado").innerText = "Error al cargar archivos JSON.";
+        document.getElementById("resultado").innerText = "Error al cargar archivos.";
     });
 });
 
@@ -171,6 +176,7 @@ function filtrarMapa2(clusterId) {
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
+    // MAPA 2A: Contexto
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
@@ -182,6 +188,7 @@ function filtrarMapa2(clusterId) {
     });
     map2A.setView([4.65, -74.1], 11);
 
+    // Lógica de Precios
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
@@ -189,39 +196,34 @@ function filtrarMapa2(clusterId) {
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
+    // TABLA DE VIVIENDAS CON IDs DE FILA
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
-        h2 += `<tr><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
+        const filaId = `fila-${v.lat}-${v.lon}`.replace(/\./g, '_');
+        h2 += `<tr id="${filaId}"><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
                <td><button onclick="hacerZoomVivienda(${v.lat}, ${v.lon}, ${v.Precio})">📍 Ver</button></td></tr>`;
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
+    // MAPA 2B: Puntos con Click
     vOrdenadas.forEach((p, i) => {
-        let marcador = L.circleMarker([p.lat, p.lon], { 
-            radius: 8, 
-            color: "blue", 
-            fillOpacity: 0.8, 
-            weight: 2 
-        }).addTo(capaPuntos2B);
-        
+        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2B);
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
         marcador.viviendaID = `${p.lat}-${p.lon}`; 
-
-        // --- NUEVA FUNCIONALIDAD: CLICK EN EL MARCADOR ---
-        marcador.on('click', function() {
-            hacerZoomVivienda(p.lat, p.lon, p.Precio);
-        });
+        
+        marcador.on('click', () => hacerZoomVivienda(p.lat, p.lon, p.Precio));
     });
 
     if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds());
 }
 
 // ==========================================
-// 6. ZOOM Y FICHA TÉCNICA
+// 6. ZOOM, RESALTADO CRUZADO Y FICHA
 // ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
     map2B.setView([lat, lon], 17);
 
+    // 1. Resaltar Marcador
     capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
@@ -233,6 +235,20 @@ function hacerZoomVivienda(lat, lon, precio) {
         }
     });
 
+    // 2. Resaltar Fila en Tabla y Scroll
+    document.querySelectorAll("#tabla-viviendas tr").forEach(tr => {
+        tr.style.backgroundColor = ""; 
+        tr.style.fontWeight = "normal";
+    });
+    const filaId = `fila-${lat}-${lon}`.replace(/\./g, '_');
+    const fila = document.getElementById(filaId);
+    if (fila) {
+        fila.style.backgroundColor = "#fff9c4";
+        fila.style.fontWeight = "bold";
+        fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // 3. Ficha Técnica
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
     if (!registro) return;
 
@@ -262,11 +278,9 @@ function hacerZoomVivienda(lat, lon, precio) {
     variables.forEach(v => {
         let nom = v.replace(/_/g, ' ');
         let val = registro[v];
-        let extra = "";
+        let extra = (v === "Estrato_Manzana_score") ? "" : (mapaNombres[v] && registro[mapaNombres[v]] ? `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>` : "");
         
         if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
-        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
-        
         if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
         if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
 
