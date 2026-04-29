@@ -31,7 +31,7 @@ const variables = [
 
 let centroides = [];
 let viviendas = [];
-let map, map2, capaPuntos, capaPuntos2, capaResaltado;
+let map, map2, capaPuntos, capaPuntos2;
 
 // =============================
 // 2. INICIALIZACIÓN
@@ -43,7 +43,6 @@ document.addEventListener("DOMContentLoaded", function () {
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
-    let capaResaltado = L.layerGroup().addTo(map);
 
     map2 = L.map('map2').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
@@ -114,13 +113,19 @@ function calcular() {
 
     // A. CAPTURAR PESOS SEGÚN EL ORDEN DE LA LISTA
     const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
+    
+    // 1. Obtenemos el orden actual de las IDs desde el contenedor de la lista
     const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
     
+    // 2. Creamos un mapa temporal para saber qué peso le toca a cada nombre de variable
     let mapaDePesos = {};
     listaOrdenada.forEach((nombreVar, index) => {
+        // Asignamos el peso según la posición (index) en la lista
         mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
     });
 
+    // 3. Generamos el array 'current_weights' respetando el orden original de la constante 'variables'
+    // Esto es CRÍTICO para que el cálculo matemático coincida con las columnas de tus JSON
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
 
     // B. CAPTURAR DATOS ECONÓMICOS
@@ -133,6 +138,7 @@ function calcular() {
     let infoClusters = centroides.map((cluster, index) => {
         let suma = variables.reduce((acc, v, i) => {
             let valCentroide = cluster[v] || 0;
+            // Usamos los nuevos pesos calculados por posición
             return acc + (current_weights[i] * Math.pow(valCentroide, 2));
         }, 0);
         
@@ -152,48 +158,47 @@ function calcular() {
         };
     });
 
-    // D. ORDENAR TODOS LOS CLUSTERS (Sin .slice para ver todos)
-    let clustersOrdenados = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster);
+    // --- (De aquí en adelante, el resto de tu código D, E, F y G se mantiene igual) ---
+    // D. ORDENAR TOP 10
+    let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
 
     const todosLosScores = infoClusters.map(c => c.scoreCluster);
     const minGlobal = Math.min(...todosLosScores);
     const maxGlobal = Math.max(...todosLosScores);
 
-    // E. LIMPIAR Y PINTAR MAPA 1
+    // E. LIMPIAR Y PINTAR MAPAS
     capaPuntos.clearLayers();
+    capaPuntos2.clearLayers();
+    const idsTop10 = top10.map(c => c.id);
+
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
         let col = colorScore(sc, minGlobal, maxGlobal);
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
+        if (idsTop10.includes(p.Clusters)) {
+            L.circleMarker([p.lat, p.lon], { radius: 3, color: col, fillOpacity: 0.8, weight: 1, stroke: true }).addTo(capaPuntos2);
+        }
     });
 
-    // F. TABLA 1: TODOS LOS CLUSTERS CON EVENTOS DE MOUSE
-    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#eee; position: sticky; top: 0; z-index: 5;">
-                    <th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th>
-                </tr>`;
-    
-    clustersOrdenados.forEach(c => {
-        h1 += `<tr style="cursor:pointer;" 
-                   onclick="filtrarMapa2(${c.id})" 
-                   onmouseover="resaltarClusterEnMapa1(${c.id})" 
-                   onmouseout="quitarResaltado()"
-                   class="fila-cluster">
-                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
-                <td>${c.puntos}</td>
-                <td>${c.scoreCluster.toFixed(4)}</td>
-                <td>${c.scoreEProm.toFixed(4)}</td>
-               </tr>`;
+    // F. TABLA 1
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee;"><th>Cluster (Clic para filtrar)</th><th>Puntos</th><th>Score Cluster</th><th>Econ. Prom</th></tr>`;
+    top10.forEach(c => {
+        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'"><td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
     document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 
-    // G. TABLA 2: INICIALIZAR CON EL MEJOR CLUSTER
-    // Llamamos directamente a la función que ya tienes para que llene la tabla de la derecha
-    if (clustersOrdenados.length > 0) {
-        filtrarMapa2(clustersOrdenados[0].id);
-    }
+    // G. TABLA 2
+    let mejorClusterId = top10[0].id;
+    let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
+        .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
+        .sort((a, b) => a.sE - b.sE).slice(0, 5);
 
-    document.getElementById("resultado").innerText = "Cálculo completado. Analizando " + clustersOrdenados.length + " clusters.";
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th></tr>`;
+    vMejor.forEach(v => { h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`; });
+
+    document.querySelector("h3:last-of-type").innerText = "Top 5 Viviendas recomendadas (Mejor Cluster)";
+    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
+    document.getElementById("resultado").innerText = "Cálculo completado con pesos jerárquicos. Ca: $" + Ca.toLocaleString();
 }
 
 
@@ -360,21 +365,4 @@ function hacerZoomVivienda(lat, lon, precio) {
         htmlDetalle += `</div>`;
         document.getElementById("detalle-vivienda").innerHTML = htmlDetalle;
     }
-}
-
-let capaResaltado = L.layerGroup().addTo(map); 
-
-function resaltarClusterEnMapa1(clusterId) {
-    capaResaltado.clearLayers();
-    const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
-    if (puntosCluster.length > 0) {
-        const lats = puntosCluster.map(p => p.lat);
-        const lons = puntosCluster.map(p => p.lon);
-        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
-        L.rectangle(bounds, {color: "#ff0000", weight: 3, fillOpacity: 0, dashArray: "5, 5"}).addTo(capaResaltado);
-    }
-}
-
-function quitarResaltado() {
-    capaResaltado.clearLayers();
 }
