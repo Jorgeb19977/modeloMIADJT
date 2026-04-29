@@ -17,14 +17,14 @@ const variables = [
 const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
 
 // ==========================================
-// 2. INICIALIZACIÓN (DOMContentLoaded)
+// 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
     // Inicializar Mapa 1
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
-    capaResaltado = L.layerGroup().addTo(map); // Capa para el cuadro rojo
+    capaResaltado = L.layerGroup().addTo(map); // Capa para el cuadro rojo al pasar el mouse
 
     // Inicializar Mapa 2
     map2 = L.map('map2').setView([4.65, -74.1], 11);
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Generar Lista Arrastrable de Variables
     const container = document.getElementById("variables");
-    variables.forEach((v, index) => {
+    variables.forEach((v) => {
         const div = document.createElement("div");
         div.className = "variable-item";
         div.draggable = true;
@@ -54,23 +54,23 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
-    // Cargar Datos
+    // Cargar Datos JSON
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
     ]).then(([dataC, dataV]) => {
         centroides = dataC;
         viviendas = dataV;
-        calcularLimites(); // Calcular min/max para las barritas verdes
+        calcularLimites(); 
         document.getElementById("resultado").innerText = "Datos listos. Ordena las variables y calcula.";
     }).catch(err => {
-        console.error("Error cargando JSON:", err);
-        document.getElementById("resultado").innerText = "Error al cargar datos.";
+        console.error("Error:", err);
+        document.getElementById("resultado").innerText = "Error al cargar archivos JSON.";
     });
 });
 
 // ==========================================
-// 3. FUNCIONES MATEMÁTICAS Y DE APOYO
+// 3. FUNCIONES DE APOYO
 // ==========================================
 function calcularLimites() {
     variables.forEach(v => {
@@ -92,9 +92,7 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-// ==========================================
-// 4. LÓGICA DE RESALTADO (MAPA 1)
-// ==========================================
+// Resaltado cuadro rojo en Mapa 1
 function resaltarClusterEnMapa1(clusterId) {
     capaResaltado.clearLayers();
     const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
@@ -111,7 +109,7 @@ function quitarResaltado() {
 }
 
 // ==========================================
-// 5. CÁLCULO PRINCIPAL
+// 4. CÁLCULO PRINCIPAL
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
@@ -147,7 +145,7 @@ function calcular() {
     const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
     const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
-    // Pintar Mapa 1
+    // Mapa 1
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
@@ -155,7 +153,7 @@ function calcular() {
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
     });
 
-    // Generar Tabla 1 (Todos los clusters)
+    // Tabla 1 (Todos los clusters)
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersOrdenados.forEach(c => {
         h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
@@ -164,13 +162,12 @@ function calcular() {
     });
     document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 
-    // Inicializar Tabla 2 con el mejor
     filtrarMapa2(clustersOrdenados[0].id);
     document.getElementById("resultado").innerText = "Cálculo completado.";
 }
 
 // ==========================================
-// 6. FILTRAR MAPA 2 Y VIVIENDAS
+// 5. MAPA DE DETALLE Y VIVIENDAS
 // ==========================================
 function filtrarMapa2(clusterId) {
     capaPuntos2.clearLayers();
@@ -190,18 +187,32 @@ function filtrarMapa2(clusterId) {
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
     vOrdenadas.forEach((p, i) => {
-        L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8 }).addTo(capaPuntos2)
-         .bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
+        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2);
+        marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
+        marcador.viviendaID = `${p.lat}-${p.lon}`; // ID para resaltado
     });
 
     if (vOrdenadas.length > 0) map2.fitBounds(new L.featureGroup(capaPuntos2.getLayers()).getBounds());
 }
 
 // ==========================================
-// 7. FICHA DE DETALLE FINAL
+// 6. ZOOM Y FICHA TÉCNICA
 // ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
     map2.setView([lat, lon], 17);
+
+    // Resaltado de marcador en Mapa 2
+    capaPuntos2.eachLayer(layer => {
+        if (layer instanceof L.CircleMarker) {
+            if (layer.viviendaID === `${lat}-${lon}`) {
+                layer.setStyle({ color: 'orange', weight: 6, radius: 12 });
+                layer.bringToFront();
+            } else {
+                layer.setStyle({ color: 'blue', weight: 2, radius: 8 });
+            }
+        }
+    });
+
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
     if (!registro) return;
 
@@ -216,9 +227,11 @@ function hacerZoomVivienda(lat, lon, precio) {
         const lim = limitesGlobales[clave] || { min: 0, max: 1 };
         let porc = Math.max(0, Math.min(100, ((valor - lim.min) / (lim.max - lim.min)) * 100));
         return `
-            <div style="background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px; min-height: 85px;">
-                <small style="color: #777; font-size: 0.6rem; display: block;">${etiqueta}:</small>
-                <strong style="font-size: 0.85rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
+            <div style="background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px; min-height: 85px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <small style="color: #777; font-size: 0.6rem; text-transform: uppercase;">${etiqueta}:</small><br>
+                    <strong style="font-size: 0.85rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
+                </div>
                 <div style="width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px;">
                     <div style="width: ${porc}%; height: 100%; background: #4caf50;"></div>
                 </div>
@@ -230,9 +243,14 @@ function hacerZoomVivienda(lat, lon, precio) {
         let nom = v.replace(/_/g, ' ');
         let val = registro[v];
         let extra = "";
-        if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
-        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:green; font-size:0.65rem;">${registro[mapaNombres[v]]}</span>`; }
         
+        if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
+        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
+        
+        // Limpieza de nombres Dist_
+        if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
+        if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
+
         let cuadro = crearCuadro(nom, val, v);
         if (extra) cuadro = cuadro.replace("</strong>", "</strong>" + extra);
         html += cuadro;
