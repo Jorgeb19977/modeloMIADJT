@@ -1,26 +1,11 @@
+// ==========================================
+// 1. VARIABLES GLOBALES Y CONFIGURACIÓN
+// ==========================================
 let limitesGlobales = {};
+let centroides = [];
+let viviendas = [];
+let map, map2, capaPuntos, capaPuntos2, capaResaltado;
 
-function calcularLimites() {
-    variables.forEach(v => {
-        const valores = viviendas.map(reg => reg[v] || 0);
-        limitesGlobales[v] = {
-            min: Math.min(...valores),
-            max: Math.max(...valores)
-        };
-    });
-    // También para el Precio
-    const precios = viviendas.map(reg => reg.Precio || 0);
-    limitesGlobales["Precio"] = {
-        min: Math.min(...precios),
-        max: Math.max(...precios)
-    };
-}
-// Llama a calcularLimites() justo después de que 'viviendas' se cargue por primera vez
-
-
-// =============================
-// 1. CONFIGURACIÓN Y VARIABLES
-// =============================
 const variables = [
     "Dist_Metro_m", "Dist_Gastro_m", "Dist_Educa_m", "Dist_TM_m",
     "Dist_Parque_m", "Dist_Salud_m", "Dist_CC_m", "Ozono",
@@ -29,36 +14,32 @@ const variables = [
     "Estrato_Manzana_score"
 ];
 
-let centroides = [];
-let viviendas = [];
-let map, map2, capaPuntos, capaPuntos2;
-
-// =============================
-// 2. INICIALIZACIÓN
-// =============================
 const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
 
+// ==========================================
+// 2. INICIALIZACIÓN (DOMContentLoaded)
+// ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-    // Inicializar Mapas (esto se queda igual)
+    // Inicializar Mapa 1
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
+    capaResaltado = L.layerGroup().addTo(map); // Capa para el cuadro rojo
 
+    // Inicializar Mapa 2
     map2 = L.map('map2').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
     capaPuntos2 = L.layerGroup().addTo(map2);
 
-    // Generar Lista Arrastrable
+    // Generar Lista Arrastrable de Variables
     const container = document.getElementById("variables");
     variables.forEach((v, index) => {
         const div = document.createElement("div");
         div.className = "variable-item";
         div.draggable = true;
         div.id = v;
-        div.style = "padding: 10px; margin: 5px; background: white; border: 1px solid #bbb; cursor: grab; display: flex; align-items: center; border-radius: 4px;";
-        div.innerHTML = `<span style="margin-right: 15px; color: #888;">☰</span> <b>${v}</b>`;
+        div.innerHTML = `<span style="margin-right: 15px; color: #888;">☰</span> <b>${v.replace(/_/g, ' ')}</b>`;
         
-        // Eventos para arrastrar
         div.ondragstart = (e) => e.dataTransfer.setData("text/plain", e.target.id);
         div.ondragover = (e) => e.preventDefault();
         div.ondrop = (e) => {
@@ -73,82 +54,86 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
-    // Cargar Archivos JSON (igual)
+    // Cargar Datos
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
     ]).then(([dataC, dataV]) => {
         centroides = dataC;
         viviendas = dataV;
+        calcularLimites(); // Calcular min/max para las barritas verdes
         document.getElementById("resultado").innerText = "Datos listos. Ordena las variables y calcula.";
+    }).catch(err => {
+        console.error("Error cargando JSON:", err);
+        document.getElementById("resultado").innerText = "Error al cargar datos.";
     });
 });
 
-// =============================
-// 3. FUNCIONES DE APOYO
-// =============================
+// ==========================================
+// 3. FUNCIONES MATEMÁTICAS Y DE APOYO
+// ==========================================
+function calcularLimites() {
+    variables.forEach(v => {
+        const valores = viviendas.map(reg => reg[v] || 0);
+        limitesGlobales[v] = { min: Math.min(...valores), max: Math.max(...valores) };
+    });
+    const precios = viviendas.map(reg => reg.Precio || 0);
+    limitesGlobales["Precio"] = { min: Math.min(...precios), max: Math.max(...precios) };
+}
+
 function colorScore(score, minScore, maxScore) {
     let x = (score - minScore) / (maxScore - minScore);
     if (isNaN(x)) x = 0;
     if (x <= 0.1) return "#000080";
-    if (x <= 0.2) return "#0000FF";
-    if (x <= 0.3) return "#4169E1";
-    if (x <= 0.4) return "#1E90FF";
+    if (x <= 0.3) return "#1E90FF";
     if (x <= 0.5) return "#87CEEB";
-    if (x <= 0.6) return "#FFCCCC";
     if (x <= 0.7) return "#FF9999";
-    if (x <= 0.8) return "#FF6666";
     if (x <= 0.9) return "#FF0000";
     return "#8B0000";
 }
 
-// =============================
-// 4. LÓGICA PRINCIPAL
-// =============================
-function calcular() {
-    if (viviendas.length === 0 || centroides.length === 0) {
-        alert("Los datos aún no están listos.");
-        return;
+// ==========================================
+// 4. LÓGICA DE RESALTADO (MAPA 1)
+// ==========================================
+function resaltarClusterEnMapa1(clusterId) {
+    capaResaltado.clearLayers();
+    const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
+    if (puntosCluster.length > 0) {
+        const lats = puntosCluster.map(p => p.lat);
+        const lons = puntosCluster.map(p => p.lon);
+        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
+        L.rectangle(bounds, {color: "#ff0000", weight: 3, fillOpacity: 0, dashArray: "5, 5"}).addTo(capaResaltado);
     }
+}
 
-    // A. CAPTURAR PESOS SEGÚN EL ORDEN DE LA LISTA
-    const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
-    
-    // 1. Obtenemos el orden actual de las IDs desde el contenedor de la lista
+function quitarResaltado() {
+    capaResaltado.clearLayers();
+}
+
+// ==========================================
+// 5. CÁLCULO PRINCIPAL
+// ==========================================
+function calcular() {
+    if (viviendas.length === 0 || centroides.length === 0) return;
+
     const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
-    
-    // 2. Creamos un mapa temporal para saber qué peso le toca a cada nombre de variable
     let mapaDePesos = {};
     listaOrdenada.forEach((nombreVar, index) => {
-        // Asignamos el peso según la posición (index) en la lista
         mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
     });
 
-    // 3. Generamos el array 'current_weights' respetando el orden original de la constante 'variables'
-    // Esto es CRÍTICO para que el cálculo matemático coincida con las columnas de tus JSON
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
 
-    // B. CAPTURAR DATOS ECONÓMICOS
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    // C. CALCULAR SCORES POR CLUSTER
     let infoClusters = centroides.map((cluster, index) => {
-        let suma = variables.reduce((acc, v, i) => {
-            let valCentroide = cluster[v] || 0;
-            // Usamos los nuevos pesos calculados por posición
-            return acc + (current_weights[i] * Math.pow(valCentroide, 2));
-        }, 0);
-        
+        let suma = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(cluster[v] || 0, 2)), 0);
         let sCluster = Math.sqrt(suma);
         let vEnCluster = viviendas.filter(v => v.Clusters === index);
-        
-        let totalScoreE = vEnCluster.reduce((acc, v) => {
-            let sE = Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0;
-            return acc + sE;
-        }, 0);
+        let totalScoreE = vEnCluster.reduce((acc, v) => acc + (Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0), 0);
 
         return {
             id: index,
@@ -158,211 +143,100 @@ function calcular() {
         };
     });
 
-    // --- (De aquí en adelante, el resto de tu código D, E, F y G se mantiene igual) ---
-    // D. ORDENAR TOP 10
-    let top10 = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster).slice(0, 10);
+    let clustersOrdenados = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster);
+    const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
+    const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
-    const todosLosScores = infoClusters.map(c => c.scoreCluster);
-    const minGlobal = Math.min(...todosLosScores);
-    const maxGlobal = Math.max(...todosLosScores);
-
-    // E. LIMPIAR Y PINTAR MAPAS
+    // Pintar Mapa 1
     capaPuntos.clearLayers();
-    capaPuntos2.clearLayers();
-    const idsTop10 = top10.map(c => c.id);
-
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
         let col = colorScore(sc, minGlobal, maxGlobal);
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
-        if (idsTop10.includes(p.Clusters)) {
-            L.circleMarker([p.lat, p.lon], { radius: 3, color: col, fillOpacity: 0.8, weight: 1, stroke: true }).addTo(capaPuntos2);
-        }
     });
 
-    // F. TABLA 1
-    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee;"><th>Cluster (Clic para filtrar)</th><th>Puntos</th><th>Score Cluster</th><th>Econ. Prom</th></tr>`;
-    top10.forEach(c => {
-        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="this.style.backgroundColor='#f0f8ff'" onmouseout="this.style.backgroundColor='transparent'"><td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
+    // Generar Tabla 1 (Todos los clusters)
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
+    clustersOrdenados.forEach(c => {
+        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
+                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
+                <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
     document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 
-    // G. TABLA 2
-    let mejorClusterId = top10[0].id;
-    let vMejor = viviendas.filter(v => v.Clusters === mejorClusterId)
-        .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
-        .sort((a, b) => a.sE - b.sE).slice(0, 5);
-
-    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700;"><th>Precio</th><th>Score Económico Abs</th></tr>`;
-    vMejor.forEach(v => { h2 += `<tr><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td></tr>`; });
-
-    document.querySelector("h3:last-of-type").innerText = "Top 5 Viviendas recomendadas (Mejor Cluster)";
-    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
-    document.getElementById("resultado").innerText = "Cálculo completado con pesos jerárquicos. Ca: $" + Ca.toLocaleString();
+    // Inicializar Tabla 2 con el mejor
+    filtrarMapa2(clustersOrdenados[0].id);
+    document.getElementById("resultado").innerText = "Cálculo completado.";
 }
 
-
-
-// =============================
-// 5. FUNCIÓN: FILTRAR MAPA 2
-// =============================
+// ==========================================
+// 6. FILTRAR MAPA 2 Y VIVIENDAS
+// ==========================================
 function filtrarMapa2(clusterId) {
     capaPuntos2.clearLayers();
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
 
-    const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
-    const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
-    const gastos = parseFloat(document.getElementById("gastos").value) || 0;
-    const Ca = (ingresos - ahorros - gastos) * 0.733;
+    const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
-    // CAPTURAR PESOS ACTUALES
-    const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9, 8, 7];
-    const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
-    let mapaDePesos = {};
-    listaOrdenada.forEach((nombreVar, index) => {
-        mapaDePesos[nombreVar] = pesosPredefinidos[index] / 1000;
-    });
-    const current_weights = variables.map(v => mapaDePesos[v] || 0);
-
-    // COLOR DEL CLUSTER
-    const clusterData = centroides[clusterId];
-    let sumaC = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(clusterData[v] || 0, 2)), 0);
-    let sc = Math.sqrt(sumaC);
-    const todosLosScores = centroides.map(c => {
-        let s = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(c[v] || 0, 2)), 0);
-        return Math.sqrt(s);
-    });
-    const col = colorScore(sc, Math.min(...todosLosScores), Math.max(...todosLosScores));
-
-    // ORDENAR TODAS LAS VIVIENDAS (Sin .slice)
     let vOrdenadas = vFiltradas
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
-    // GENERAR TABLA (Añadimos un div con scroll en el paso siguiente)
-    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;">
-                <tr style="background:#ffd700; position: sticky; top: 0;">
-                    <th>#</th>
-                    <th>Precio</th>
-                    <th>Score Económico Abs</th>
-                    <th>Acción</th>
-                </tr>`;
-    
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
-        const num = i + 1;
-        h2 += `<tr>
-                <td><b>${num}</b></td>
-                <td>$${v.Precio.toLocaleString()}</td>
-                <td>${v.sE.toFixed(4)}</td>
-                <td><button onclick="hacerZoomVivienda(${v.lat}, ${v.lon}, ${v.Precio})">📍 Ver</button></td>
-               </tr>`;
+        h2 += `<tr><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
+               <td><button onclick="hacerZoomVivienda(${v.lat}, ${v.lon}, ${v.Precio})">📍 Ver</button></td></tr>`;
     });
+    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    document.querySelector("h3:last-of-type").innerText = `Todas las Viviendas del Cluster ${clusterId} (${vOrdenadas.length} encontradas)`;
-    
-    // Envolvemos la tabla en un div con scroll para que no sea infinita la página
-    document.getElementById("tabla-viviendas").innerHTML = `<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc;">${h2}</table></div>`;
-
-    // DIBUJAR TODOS LOS PUNTOS EN MAPA 2
     vOrdenadas.forEach((p, i) => {
-        const num = i + 1;
-        let marcador = L.circleMarker([p.lat, p.lon], {
-            radius: 9, 
-            color: col,
-            fillOpacity: 0.9,
-            weight: 2,
-            stroke: true
-        }).addTo(capaPuntos2);
-
-        marcador.bindTooltip(`${num}`, {
-            permanent: true, 
-            direction: 'center',
-            className: 'etiqueta-numero'
-        }).bindPopup(`<b>Vivienda #${num}</b><br>Precio: $${p.Precio.toLocaleString()}`);
+        L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8 }).addTo(capaPuntos2)
+         .bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
     });
 
-    if (vOrdenadas.length > 0) {
-        const grupo = new L.featureGroup(capaPuntos2.getLayers());
-        map2.fitBounds(grupo.getBounds(), { padding: [30, 30] });
-    }
+    if (vOrdenadas.length > 0) map2.fitBounds(new L.featureGroup(capaPuntos2.getLayers()).getBounds());
 }
 
+// ==========================================
+// 7. FICHA DE DETALLE FINAL
+// ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
     map2.setView([lat, lon], 17);
-    L.popup().setLatLng([lat, lon])
-        .setContent(`<b>Vivienda Seleccionada</b><br>Precio: $${precio.toLocaleString()}`)
-        .openOn(map2);
-
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
+    if (!registro) return;
 
-    if (registro) {
-        if (Object.keys(limitesGlobales).length === 0) calcularLimites();
+    const mapaNombres = {
+        "Dist_CC_m": "CC_Cercano", "Dist_Metro_m": "Metro_Ref", "Dist_Gastro_m": "Gastro_Cercano",
+        "Dist_Educa_m": "Educa", "Dist_TM_m": "Estacion_TM_Cercana", "Vulnerabilidad_Agua_num": "Vulnerabilidad_Agua"
+    };
 
-        let htmlDetalle = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 10px;">`;
+    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 10px;">`;
 
-        const crearCuadro = (etiqueta, valor, claveParaLimites, textoExtra = "") => {
-            const limites = limitesGlobales[claveParaLimites] || { min: 0, max: 1 };
-            let porcentaje = ((valor - limites.min) / (limites.max - limites.min)) * 100;
-            porcentaje = Math.max(0, Math.min(100, porcentaje));
-
-            return `
-                <div style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: space-between; min-height: 85px;">
-                    <div>
-                        <small style="color: #777; text-transform: uppercase; font-size: 0.6rem; display: block; margin-bottom: 2px;">${etiqueta}:</small>
-                        <strong style="font-size: 0.9rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
-                        ${textoExtra ? `<br><span style="font-size: 0.7rem; color: #2e7d32; font-weight: bold; display: block; margin-top: 2px; line-height: 1.1;">${textoExtra}</span>` : ""}
-                    </div>
-                    <div style="width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px;">
-                        <div style="width: ${porcentaje}%; height: 100%; background: #4caf50; border-radius: 2px;"></div>
-                    </div>
+    const crearCuadro = (etiqueta, valor, clave) => {
+        const lim = limitesGlobales[clave] || { min: 0, max: 1 };
+        let porc = Math.max(0, Math.min(100, ((valor - lim.min) / (lim.max - lim.min)) * 100));
+        return `
+            <div style="background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px; min-height: 85px;">
+                <small style="color: #777; font-size: 0.6rem; display: block;">${etiqueta}:</small>
+                <strong style="font-size: 0.85rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
+                <div style="width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px;">
+                    <div style="width: ${porc}%; height: 100%; background: #4caf50;"></div>
                 </div>
-            `;
-        };
+            </div>`;
+    };
 
-        // 1. Cuadro de Precio
-        htmlDetalle += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
+    html += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
+    variables.forEach(v => {
+        let nom = v.replace(/_/g, ' ');
+        let val = registro[v];
+        let extra = "";
+        if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
+        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:green; font-size:0.65rem;">${registro[mapaNombres[v]]}</span>`; }
+        
+        let cuadro = crearCuadro(nom, val, v);
+        if (extra) cuadro = cuadro.replace("</strong>", "</strong>" + extra);
+        html += cuadro;
+    });
 
-        // 2. Mapeo actualizado (IPS_Cercana eliminado de aquí)
-        const mapaNombres = {
-            "Dist_CC_m": "CC_Cercano",
-            "Dist_Metro_m": "Metro_Ref",
-            "Dist_Gastro_m": "Gastro_Cercano",
-            "Dist_Educa_m": "Educa",
-            "Dist_TM_m": "Estacion_TM_Cercana",
-            "Vulnerabilidad_Agua_num": "Vulnerabilidad_Agua"
-        };
-
-        // 3. Generar cuadros
-        variables.forEach(v => {
-            let nombreMostrar = v.replace(/_/g, ' ');
-            let valorAMostrar = registro[v];
-            let claveLimites = v;
-            let textoAdicional = "";
-
-            if (v === "Estrato_Manzana_score") {
-                nombreMostrar = "Estrato Manzana";
-                valorAMostrar = registro["Estrato_Manzana"];
-                claveLimites = "Estrato_Manzana_score";
-            } 
-            else if (mapaNombres[v]) {
-                const columnaTexto = mapaNombres[v];
-                if (registro[columnaTexto]) {
-                    textoAdicional = registro[columnaTexto];
-                }
-            }
-
-            // Limpieza visual de etiquetas
-            if (v.startsWith("Dist_")) {
-                nombreMostrar = "Dist. " + nombreMostrar.replace("Dist ", "").replace(" m", "");
-            }
-            if (v === "Vulnerabilidad_Agua_num") {
-                nombreMostrar = "Vuln. Agua";
-            }
-
-            htmlDetalle += crearCuadro(nombreMostrar, valorAMostrar, claveLimites, textoAdicional);
-        });
-
-        htmlDetalle += `</div>`;
-        document.getElementById("detalle-vivienda").innerHTML = htmlDetalle;
-    }
+    document.getElementById("detalle-vivienda").innerHTML = html + `</div>`;
 }
