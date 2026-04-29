@@ -6,6 +6,7 @@ let centroides = [];
 let viviendas = [];
 let map, map2A, map2B; 
 let capaPuntos, capaPuntos2A, capaPuntos2B, capaResaltado;
+let ultimoResultadoClusters = []; // Almacena el cálculo para filtrar sin recalcular
 
 const variables = [
     "Dist_Metro_m", "Dist_Gastro_m", "Dist_Educa_m", "Dist_TM_m",
@@ -21,6 +22,7 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
+    // Inicialización de Mapas
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
@@ -34,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
 
+    // Configuración de Lista Arrastrable
     const container = document.getElementById("variables");
     variables.forEach((v) => {
         const div = document.createElement("div");
@@ -56,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
+    // Carga de Archivos
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
@@ -63,15 +67,15 @@ document.addEventListener("DOMContentLoaded", function () {
         centroides = dataC;
         viviendas = dataV;
         calcularLimites(); 
-        document.getElementById("resultado").innerText = "Datos cargados. Configure y calcule.";
+        document.getElementById("resultado").innerText = "Datos listos. Configure y calcule.";
     }).catch(err => {
         console.error("Error:", err);
-        document.getElementById("resultado").innerText = "Error al cargar archivos JSON.";
+        document.getElementById("resultado").innerText = "Error al cargar archivos.";
     });
 });
 
 // ==========================================
-// 3. FUNCIONES DE APOYO
+// 3. FUNCIONES DE APOYO Y COLOR
 // ==========================================
 function calcularLimites() {
     variables.forEach(v => {
@@ -93,33 +97,59 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-// NUEVA ESCALA: AZUL (Mejor) -> ROJO (Peor)
 function colorScoreEconomico(sE, maxSE) {
     let x = maxSE !== 0 ? sE / maxSE : 0;
-    if (x <= 0.2) return "#0047FF"; // Azul Eléctrico (Máxima afinidad)
+    if (x <= 0.2) return "#0047FF"; // Azul Eléctrico
     if (x <= 0.4) return "#00CCFF"; // Cian
-    if (x <= 0.6) return "#FFD700"; // Oro/Amarillo
-    if (x <= 0.8) return "#FF8C00"; // Naranja oscuro
+    if (x <= 0.6) return "#FFD700"; // Amarillo
+    if (x <= 0.8) return "#FF8C00"; // Naranja
     return "#FF0000";               // Rojo
 }
 
-function resaltarClusterEnMapa1(clusterId) {
-    capaResaltado.clearLayers();
-    const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
-    if (puntosCluster.length > 0) {
-        const lats = puntosCluster.map(p => p.lat);
-        const lons = puntosCluster.map(p => p.lon);
-        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
-        L.rectangle(bounds, {color: "#ff0000", weight: 3, fillOpacity: 0, dashArray: "5, 5"}).addTo(capaResaltado);
-    }
+// ==========================================
+// 4. LÓGICA DE FILTRADO DINÁMICO (SLIDER)
+// ==========================================
+function actualizarFiltroScore(valor) {
+    document.getElementById("score-valor").innerText = valor + "%";
+    renderizarVistasFiltradas();
 }
 
-function quitarResaltado() {
-    capaResaltado.clearLayers();
+function renderizarVistasFiltradas() {
+    if (ultimoResultadoClusters.length === 0) return;
+
+    const sliderVal = parseFloat(document.getElementById("score-slider").value);
+    const umbralPorcentaje = sliderVal / 100;
+    
+    const scores = ultimoResultadoClusters.map(c => c.scoreCluster);
+    const minGlobal = Math.min(...scores);
+    const maxGlobal = Math.max(...scores);
+    
+    // El umbral real de score basado en el % del slider
+    const scoreMaximoPermitido = minGlobal + (maxGlobal - minGlobal) * umbralPorcentaje;
+
+    // A. Filtrar Mapa 1
+    capaPuntos.clearLayers();
+    viviendas.forEach(p => {
+        let sc = ultimoResultadoClusters[p.Clusters].scoreCluster;
+        if (sc <= scoreMaximoPermitido) {
+            let col = colorScore(sc, minGlobal, maxGlobal);
+            L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
+        }
+    });
+
+    // B. Filtrar Tabla 1
+    let clustersFiltrados = ultimoResultadoClusters.filter(c => c.scoreCluster <= scoreMaximoPermitido);
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
+    clustersFiltrados.forEach(c => {
+        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
+                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
+                <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
+    });
+    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 }
 
 // ==========================================
-// 4. CÁLCULO PRINCIPAL
+// 5. CÁLCULO PRINCIPAL
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
@@ -137,7 +167,8 @@ function calcular() {
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
     const Ca = (ingresos - ahorros - gastos) * 0.733;
 
-    let infoClusters = centroides.map((cluster, index) => {
+    // Calcular y guardar en la variable global
+    ultimoResultadoClusters = centroides.map((cluster, index) => {
         let suma = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(cluster[v] || 0, 2)), 0);
         let sCluster = Math.sqrt(suma);
         let vEnCluster = viviendas.filter(v => v.Clusters === index);
@@ -149,38 +180,25 @@ function calcular() {
             puntos: vEnCluster.length,
             scoreEProm: vEnCluster.length > 0 ? (totalScoreE / vEnCluster.length) : 0
         };
-    });
+    }).sort((a, b) => a.scoreCluster - b.scoreCluster);
 
-    let clustersOrdenados = [...infoClusters].sort((a, b) => a.scoreCluster - b.scoreCluster);
-    const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
-    const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
-
-    capaPuntos.clearLayers();
-    viviendas.forEach(p => {
-        let sc = infoClusters[p.Clusters].scoreCluster;
-        let col = colorScore(sc, minGlobal, maxGlobal);
-        L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
-    });
-
-    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
-    clustersOrdenados.forEach(c => {
-        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
-                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
-                <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
-    });
-    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
-
-    filtrarMapa2(clustersOrdenados[0].id);
+    renderizarVistasFiltradas();
+    
+    // Abrir el mejor por defecto
+    if (ultimoResultadoClusters.length > 0) {
+        filtrarMapa2(ultimoResultadoClusters[0].id);
+    }
     document.getElementById("resultado").innerText = "Cálculo completado.";
 }
 
 // ==========================================
-// 5. FILTRADO Y MAPAS DE DETALLE (2A y 2B)
+// 6. FILTRADO Y MAPAS DE DETALLE (2A y 2B)
 // ==========================================
 function filtrarMapa2(clusterId) {
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
+    // MAPA 2A: Contexto
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
@@ -190,7 +208,6 @@ function filtrarMapa2(clusterId) {
             fillOpacity: esDelCluster ? 0.9 : 0.4
         }).addTo(capaPuntos2A);
     });
-    map2A.setView([4.65, -74.1], 11);
 
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
@@ -201,6 +218,7 @@ function filtrarMapa2(clusterId) {
 
     const maxSEActual = vOrdenadas.length > 0 ? Math.max(...vOrdenadas.map(v => v.sE)) : 0;
 
+    // Tabla de Viviendas
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
         const filaId = `fila-${v.lat}-${v.lon}`.replace(/\./g, '_');
@@ -209,15 +227,11 @@ function filtrarMapa2(clusterId) {
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
+    // MAPA 2B: Puntos Económicos
     vOrdenadas.forEach((p, i) => {
         let colEco = colorScoreEconomico(p.sE, maxSEActual);
-
         let marcador = L.circleMarker([p.lat, p.lon], { 
-            radius: 9, 
-            color: colEco, 
-            fillColor: colEco,
-            fillOpacity: 0.9, 
-            weight: 2 
+            radius: 9, color: colEco, fillColor: colEco, fillOpacity: 0.9, weight: 2 
         }).addTo(capaPuntos2B);
         
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
@@ -231,7 +245,7 @@ function filtrarMapa2(clusterId) {
 }
 
 // ==========================================
-// 6. ZOOM, RESALTADO CRUZADO Y FICHA
+// 7. ZOOM, RESALTADO Y FICHA
 // ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
     map2B.setView([lat, lon], 17);
@@ -239,7 +253,7 @@ function hacerZoomVivienda(lat, lon, precio) {
     capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
-                layer.setStyle({ color: '#FF00FF', fillColor: '#FF00FF', weight: 6, radius: 12 }); // Resaltado Fucsia/Magenta para que destaque sobre el azul
+                layer.setStyle({ color: '#FF00FF', fillColor: '#FF00FF', weight: 6, radius: 12 });
                 layer.bringToFront();
             } else {
                 layer.setStyle({ color: layer.colorOriginal, fillColor: layer.colorOriginal, weight: 2, radius: 9 });
@@ -247,9 +261,9 @@ function hacerZoomVivienda(lat, lon, precio) {
         }
     });
 
+    // Resaltar en Tabla
     document.querySelectorAll("#tabla-viviendas tr").forEach(tr => {
-        tr.style.backgroundColor = ""; 
-        tr.style.fontWeight = "normal";
+        tr.style.backgroundColor = ""; tr.style.fontWeight = "normal";
     });
     const filaId = `fila-${lat}-${lon}`.replace(/\./g, '_');
     const fila = document.getElementById(filaId);
@@ -259,6 +273,7 @@ function hacerZoomVivienda(lat, lon, precio) {
         fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // Generar Ficha Técnica
     const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
     if (!registro) return;
 
@@ -303,3 +318,16 @@ function hacerZoomVivienda(lat, lon, precio) {
 
     document.getElementById("detalle-vivienda").innerHTML = html + `</div>`;
 }
+
+function resaltarClusterEnMapa1(clusterId) {
+    capaResaltado.clearLayers();
+    const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
+    if (puntosCluster.length > 0) {
+        const lats = puntosCluster.map(p => p.lat);
+        const lons = puntosCluster.map(p => p.lon);
+        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
+        L.rectangle(bounds, {color: "#ff0000", weight: 3, fillOpacity: 0, dashArray: "5, 5"}).addTo(capaResaltado);
+    }
+}
+
+function quitarResaltado() { capaResaltado.clearLayers(); }

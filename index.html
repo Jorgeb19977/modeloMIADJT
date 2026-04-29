@@ -26,6 +26,10 @@
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
         .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         
+        /* Estilos Slider */
+        input[type=range] { cursor: pointer; margin-top: 10px; }
+        #score-valor { background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+
         /* Mapas */
         .map-container { height: 350px; width: 100%; border: 1px solid #ccc; border-radius: 8px; background: white; }
         .doble-mapa { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -41,8 +45,10 @@
         /* Detalle Inferior */
         .detalle-wrapper { background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-calcular:hover { background-color: #0056b3; }
+        
+        /* Tooltip de los números en el mapa */
         .etiqueta-numero { background: transparent !important; border: none !important; color: white !important; font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black; }
     </style>
 </head>
@@ -56,22 +62,31 @@
 
             <div class="seccion-input">
                 <h3>Datos Financieros</h3>
-                <label>Ingresos:</label>
+                <label style="font-size: 0.8rem;">Ingresos:</label>
                 <input type="number" id="ingresos" value="0">
-                <label>Ahorros:</label>
+                <label style="font-size: 0.8rem;">Ahorros:</label>
                 <input type="number" id="ahorros" value="0">
-                <label>Gastos:</label>
+                <label style="font-size: 0.8rem;">Gastos:</label>
                 <input type="number" id="gastos" value="0">
             </div>
 
+            <div class="seccion-input">
+                <h3>Filtro de Afinidad (Score)</h3>
+                <p style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">Mostrar solo clusters con score dentro del:</p>
+                <input type="range" id="score-slider" min="0" max="100" value="100" step="1" oninput="actualizarFiltroScore(this.value)">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 5px;">
+                    <span style="color: #28a745; font-weight: bold;">Mejor</span>
+                    <span id="score-valor">100%</span>
+                </div>
+            </div>
+
             <button class="btn-calcular" onclick="calcular()">CALCULAR</button>
-            <p id="resultado" style="font-size: 0.8rem; color: blue; margin-top: 10px;"></p>
+            <p id="resultado" style="font-size: 0.8rem; color: blue; margin-top: 10px; font-weight: bold;"></p>
         </div>
 
         <div class="main-content">
             
             <div class="top-section">
-                
                 <div class="columna-segmentada">
                     <div>
                         <h3>Mapa 1: General (Bogotá)</h3>
@@ -92,17 +107,16 @@
                         </div>
                     </div>
                     <div class="tabla-wrapper">
-                        <h3>Viviendas del Cluster</h3>
+                        <h3>Viviendas del Cluster (Escala Económica)</h3>
                         <div id="tabla-viviendas" class="tabla-scroll"></div>
                     </div>
                 </div>
-
             </div>
 
             <div class="detalle-wrapper">
                 <h3>Ficha de Detalle: Vivienda Seleccionada</h3>
                 <div id="detalle-vivienda">
-                    <p style="color: #888; font-size: 0.85rem; font-style: italic;">Haz clic en "📍 Ver" en la tabla para cargar los datos técnicos del inmueble.</p>
+                    <p style="color: #888; font-size: 0.85rem; font-style: italic;">Haz clic en un punto azul/celeste del mapa o en "📍 Ver" en la tabla para cargar los datos técnicos.</p>
                 </div>
             </div>
 
