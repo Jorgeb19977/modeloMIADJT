@@ -168,7 +168,6 @@ function renderizarVistasFiltradas() {
         if (sc !== undefined && sc <= scoreMaximoPermitido) {
             let col = colorScore(sc, minGlobal, maxGlobal);
             
-            // CREACIÓN DEL PUNTO CON EVENTO DE CLIC
             let marcador = L.circleMarker([p.lat, p.lon], { 
                 radius: 3, 
                 color: col, 
@@ -177,11 +176,8 @@ function renderizarVistasFiltradas() {
                 fillOpacity: 0.8 
             });
 
-            // Al hacer clic, filtramos el dashboard por el cluster de este punto
             marcador.on('click', function() {
                 filtrarMapa2(p.Clusters);
-                // Opcional: Resaltar visualmente en la tabla lateral
-                resaltarClusterEnMapa1(p.Clusters);
             });
 
             marcador.addTo(capaPuntos);
@@ -191,7 +187,9 @@ function renderizarVistasFiltradas() {
     let clustersFiltrados = ultimoResultadoClusters.filter(c => c.scoreCluster <= scoreMaximoPermitido);
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersFiltrados.forEach(c => {
-        h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
+        // ID dinámico para la fila del cluster
+        const filaClusterId = `fila-cluster-${c.id}`;
+        h1 += `<tr id="${filaClusterId}" style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
                 <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
                 <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
@@ -202,6 +200,14 @@ function renderizarVistasFiltradas() {
 // 6. DETALLE (MAPAS 2A/2B) Y ZOOM
 // ==========================================
 function filtrarMapa2(clusterId) {
+    // A. Resaltar visualmente la fila en la Tabla 1
+    document.querySelectorAll("#tabla-clusters tr").forEach(tr => tr.classList.remove("fila-seleccionada"));
+    const fila = document.getElementById(`fila-cluster-${clusterId}`);
+    if (fila) {
+        fila.classList.add("fila-seleccionada");
+        fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
