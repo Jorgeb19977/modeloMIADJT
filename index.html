@@ -5,28 +5,45 @@
     <title>Dashboard Recomendación Vivienda Bogotá</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        /* [TUS ESTILOS SE MANTIENEN IGUAL] */
         body { font-family: sans-serif; margin: 0; padding: 0; line-height: 1.4; background-color: #f4f4f9; }
         .dashboard-container { display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 320px; background: white; padding: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; }
-        .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-content: start; }
-        h2, h3 { margin-top: 0; color: #333; font-size: 1rem; }
+        
+        /* Sidebar */
+        .sidebar { width: 320px; background: white; padding: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; flex-shrink: 0; }
+        
+        /* Contenedor Principal */
+        .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        /* Sistema de Columnas para alinear Mapas sobre Tablas */
+        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .columna-segmentada { display: flex; flex-direction: column; gap: 20px; }
+
+        h2, h3 { margin: 0 0 10px 0; color: #333; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Variables y Inputs */
         #variables { display: flex; flex-direction: column; gap: 4px; background: #f9f9f9; padding: 8px; border-radius: 8px; border: 2px dashed #ddd; margin-bottom: 15px; }
         .variable-item { padding: 5px 10px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: grab; font-size: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
         .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        .map-container { height: 380px; width: 100%; border: 1px solid #ccc; border-radius: 8px; background: white; }
-        .tabla-wrapper { grid-column: span 1; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .detalle-wrapper { grid-column: span 2; background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        /* Mapas */
+        .map-container { height: 350px; width: 100%; border: 1px solid #ccc; border-radius: 8px; background: white; }
+        .doble-mapa { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* Tablas */
+        .tabla-wrapper { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .tabla-scroll { max-height: 250px; overflow-y: auto; border: 1px solid #eee; }
+        
         table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-        th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
-        th { background-color: #f2f2f2; position: sticky; top: 0; }
-        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 5; }
+        
+        /* Detalle Inferior */
+        .detalle-wrapper { background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-calcular:hover { background-color: #0056b3; }
         .etiqueta-numero { background: transparent !important; border: none !important; color: white !important; font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black; }
-
-        /* NUEVO ESTILO: Ajuste para que el Mapa 1 ocupe todo el ancho arriba */
-        .full-width { grid-column: span 2; }
     </style>
 </head>
 <body>
@@ -52,29 +69,34 @@
         </div>
 
         <div class="main-content">
-            <div class="map-box full-width">
-                <h3>Mapa 1: General (Bogotá)</h3>
-                <div id="map" class="map-container"></div>
-            </div>
             
-            <div class="map-box">
-                <h3>Mapa 2A: Contexto del Cluster</h3>
-                <div id="map2A" class="map-container"></div>
-            </div>
+            <div class="top-section">
+                
+                <div class="columna-segmentada">
+                    <div>
+                        <h3>Mapa 1: General (Bogotá)</h3>
+                        <div id="map" class="map-container"></div>
+                    </div>
+                    <div class="tabla-wrapper">
+                        <h3>Top Clusters más afines</h3>
+                        <div id="tabla-clusters" class="tabla-scroll"></div>
+                    </div>
+                </div>
 
-            <div class="map-box">
-                <h3>Mapa 2B: Zoom y Selección</h3>
-                <div id="map2B" class="map-container"></div>
-            </div>
+                <div class="columna-segmentada">
+                    <div>
+                        <h3>Referencia de Cluster Seleccionado</h3>
+                        <div class="doble-mapa">
+                            <div id="map2A" class="map-container" style="height: 350px;"></div>
+                            <div id="map2B" class="map-container" style="height: 350px;"></div>
+                        </div>
+                    </div>
+                    <div class="tabla-wrapper">
+                        <h3>Viviendas del Cluster</h3>
+                        <div id="tabla-viviendas" class="tabla-scroll"></div>
+                    </div>
+                </div>
 
-            <div class="tabla-wrapper">
-                <h3>Top 10 Clusters más afines</h3>
-                <div id="tabla-clusters" style="max-height: 250px; overflow-y: auto;"></div>
-            </div>
-
-            <div class="tabla-wrapper">
-                <h3>Viviendas del Cluster</h3>
-                <div id="tabla-viviendas" style="max-height: 250px; overflow-y: auto;"></div>
             </div>
 
             <div class="detalle-wrapper">
@@ -83,6 +105,7 @@
                     <p style="color: #888; font-size: 0.85rem; font-style: italic;">Haz clic en "📍 Ver" en la tabla para cargar los datos técnicos del inmueble.</p>
                 </div>
             </div>
+
         </div>
     </div>
 
