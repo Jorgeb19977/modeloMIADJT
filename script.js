@@ -21,23 +21,19 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-    // Inicializar Mapa 1: General
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
-    // Inicializar Mapa 2A: Contexto (Gris y Azul Oscuro)
     map2A = L.map('map2A').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
-    // Inicializar Mapa 2B: Detalle (Zoom y Números)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
 
-    // Generar Lista Arrastrable de Variables
     const container = document.getElementById("variables");
     variables.forEach((v) => {
         const div = document.createElement("div");
@@ -60,7 +56,6 @@ document.addEventListener("DOMContentLoaded", function () {
         container.appendChild(div);
     });
 
-    // Cargar Datos JSON
     Promise.all([
         fetch("centroides.json").then(r => r.json()),
         fetch("data32GH.json").then(r => r.json())
@@ -68,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
         centroides = dataC;
         viviendas = dataV;
         calcularLimites(); 
-        document.getElementById("resultado").innerText = "Datos listos. Ordena las variables y calcula.";
+        document.getElementById("resultado").innerText = "Datos listos. Configure y calcule.";
     }).catch(err => {
         console.error("Error:", err);
         document.getElementById("resultado").innerText = "Error al cargar archivos JSON.";
@@ -150,7 +145,6 @@ function calcular() {
     const minGlobal = Math.min(...infoClusters.map(c => c.scoreCluster));
     const maxGlobal = Math.max(...infoClusters.map(c => c.scoreCluster));
 
-    // Mapa 1: General
     capaPuntos.clearLayers();
     viviendas.forEach(p => {
         let sc = infoClusters[p.Clusters].scoreCluster;
@@ -158,7 +152,6 @@ function calcular() {
         L.circleMarker([p.lat, p.lon], { radius: 2, color: col, stroke: false, fillOpacity: 0.6 }).addTo(capaPuntos);
     });
 
-    // Tabla 1: Todos los clusters
     let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersOrdenados.forEach(c => {
         h1 += `<tr style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
@@ -175,23 +168,20 @@ function calcular() {
 // 5. FILTRADO Y MAPAS DE DETALLE (2A y 2B)
 // ==========================================
 function filtrarMapa2(clusterId) {
-    // Limpiar ambos mapas de detalle
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
-    // MAPA 2A: Contexto Global (Gris y Azul Oscuro)
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
             radius: 2,
-            color: esDelCluster ? "#00008B" : "#D3D3D3", // Azul Oscuro vs Gris Claro
+            color: esDelCluster ? "#00008B" : "#D3D3D3",
             stroke: false,
             fillOpacity: esDelCluster ? 0.9 : 0.4
         }).addTo(capaPuntos2A);
     });
-    map2A.setView([4.65, -74.1], 11); // Resetear vista para ver toda la ciudad
+    map2A.setView([4.65, -74.1], 11);
 
-    // MAPA 2B: Detalle con Zoom y Números
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
     const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
 
@@ -199,7 +189,6 @@ function filtrarMapa2(clusterId) {
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
 
-    // Actualizar Tabla de Viviendas
     let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
     vOrdenadas.forEach((v, i) => {
         h2 += `<tr><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
@@ -207,11 +196,21 @@ function filtrarMapa2(clusterId) {
     });
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
 
-    // Dibujar puntos numerados en Mapa 2B
     vOrdenadas.forEach((p, i) => {
-        let marcador = L.circleMarker([p.lat, p.lon], { radius: 8, color: "blue", fillOpacity: 0.8, weight: 2 }).addTo(capaPuntos2B);
+        let marcador = L.circleMarker([p.lat, p.lon], { 
+            radius: 8, 
+            color: "blue", 
+            fillOpacity: 0.8, 
+            weight: 2 
+        }).addTo(capaPuntos2B);
+        
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
         marcador.viviendaID = `${p.lat}-${p.lon}`; 
+
+        // --- NUEVA FUNCIONALIDAD: CLICK EN EL MARCADOR ---
+        marcador.on('click', function() {
+            hacerZoomVivienda(p.lat, p.lon, p.Precio);
+        });
     });
 
     if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds());
@@ -221,9 +220,8 @@ function filtrarMapa2(clusterId) {
 // 6. ZOOM Y FICHA TÉCNICA
 // ==========================================
 function hacerZoomVivienda(lat, lon, precio) {
-    map2B.setView([lat, lon], 17); // El zoom ocurre en el mapa de detalle (2B)
+    map2B.setView([lat, lon], 17);
 
-    // Resaltado de marcador naranja en Mapa 2B
     capaPuntos2B.eachLayer(layer => {
         if (layer instanceof L.CircleMarker) {
             if (layer.viviendaID === `${lat}-${lon}`) {
