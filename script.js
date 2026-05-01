@@ -42,21 +42,25 @@ document.addEventListener("DOMContentLoaded", function () {
         div.className = "variable-item";
         div.draggable = true;
         div.id = v;
-        // Estructura limpia para asegurar que el input acompañe siempre a la variable
+        // Agregamos un contenedor interno para que el drag and drop no rompa la estructura
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; pointer-events: none;">
-                <span style="pointer-events: none;"><span style="margin-right: 10px; color: #888;">☰</span> <b>${v.replace(/_/g, ' ')}</b></span>
-                <input type="number" class="puntos-input" value="${pesosPredefinidos[index]}" 
-                       style="width: 55px; pointer-events: auto;" 
+                <span style="pointer-events: none;">
+                    <span style="margin-right: 10px; color: #888;">☰</span> 
+                    <b>${v.replace(/_/g, ' ')}</b>
+                </span>
+                <input type="number" class="puntos-input" 
+                       value="${pesosPredefinidos[index]}" 
+                       style="width: 60px; pointer-events: auto; display: none;" 
                        onclick="event.stopPropagation();">
             </div>
         `;
         
         div.ondragstart = (e) => {
             e.dataTransfer.setData("text/plain", e.target.id);
-            e.target.classList.add("dragging");
+            e.target.style.opacity = "0.5";
         };
-        div.ondragend = (e) => e.target.classList.remove("dragging");
+        div.ondragend = (e) => e.target.style.opacity = "1";
         div.ondragover = (e) => e.preventDefault();
         div.ondrop = (e) => {
             e.preventDefault();
@@ -64,9 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const draggedElement = document.getElementById(data);
             const targetElement = e.target.closest(".variable-item");
             if (targetElement && draggedElement !== targetElement) {
-                const rect = targetElement.getBoundingClientRect();
-                const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-                container.insertBefore(draggedElement, next ? targetElement.nextSibling : targetElement);
+                container.insertBefore(draggedElement, targetElement);
             }
         };
         container.appendChild(div);
@@ -84,17 +86,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ==========================================
-// 3. FUNCIONES DE APOYO Y MODO PERSONALIZADO
+// 3. FUNCIONES DE APOYO Y PERSONALIZACIÓN
 // ==========================================
 function togglePersonalizacion() {
     const container = document.getElementById("variables");
-    container.classList.toggle("modo-personalizado");
+    const esActivo = container.classList.toggle("modo-personalizado");
     
-    // Forzamos la visibilidad mediante JS por si el CSS falla
-    const inputs = document.querySelectorAll(".puntos-input");
-    const esActivo = container.classList.contains("modo-personalizado");
-    
-    inputs.forEach(input => {
+    document.querySelectorAll(".puntos-input").forEach(input => {
         input.style.display = esActivo ? "block" : "none";
     });
 
@@ -134,23 +132,22 @@ function colorScoreEconomico(sE, maxSE) {
 }
 
 // ==========================================
-// 4. CÁLCULO PRINCIPAL (CORREGIDO)
+// 4. CÁLCULO PRINCIPAL (FIJO)
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
 
-    // 1. Obtener el orden actual de los elementos en el DOM
-    const elementosActuales = Array.from(document.querySelectorAll(".variable-item"));
-    
-    // 2. Crear un objeto donde asociaremos cada variable con el valor de SU input actual
     let mapaDePesos = {};
-    elementosActuales.forEach((el) => {
-        const idVariable = el.id;
-        const valorInput = el.querySelector(".puntos-input").value;
-        mapaDePesos[idVariable] = parseFloat(valorInput) || 0;
+    const items = document.querySelectorAll(".variable-item");
+
+    // Recorremos la lista tal cual aparece en el DOM para capturar el valor del input al lado de su variable
+    items.forEach((item) => {
+        const varName = item.id;
+        const valInput = item.querySelector(".puntos-input").value;
+        mapaDePesos[varName] = parseFloat(valInput) || 0;
     });
 
-    // 3. Generar el array de pesos siguiendo estrictamente el orden del array 'variables'
+    // IMPORTANTE: Creamos los pesos en el mismo orden que el array original 'variables'
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
 
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
@@ -161,7 +158,6 @@ function calcular() {
     scoresPorClusterId = {};
 
     ultimoResultadoClusters = centroides.map((cluster, index) => {
-        // El cálculo usa current_weights que ya está alineado con 'variables'
         let suma = variables.reduce((acc, v, i) => acc + (current_weights[i] * Math.pow(cluster[v] || 0, 2)), 0);
         let sCluster = Math.sqrt(suma);
         let vEnCluster = viviendas.filter(v => v.Clusters === index);
@@ -180,8 +176,6 @@ function calcular() {
     if (ultimoResultadoClusters.length > 0) filtrarMapa2(ultimoResultadoClusters[0].id);
     document.getElementById("resultado").innerText = "Cálculo actualizado.";
 }
-
-
 
 // ==========================================
 // 5. RENDERIZADO FILTRADO Y EVENTOS MAPA 1
