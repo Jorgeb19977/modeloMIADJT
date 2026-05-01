@@ -9,7 +9,7 @@
         .dashboard-container { display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar */
-        .sidebar { width: 320px; background: white; padding: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; flex-shrink: 0; }
+        .sidebar { width: 340px; background: white; padding: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; flex-shrink: 0; }
         
         /* Contenedor Principal */
         .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
@@ -20,35 +20,31 @@
 
         h2, h3 { margin: 0 0 10px 0; color: #333; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* --- ESTRUCTURA DE VARIABLES Y RANKING --- */
+        /* --- ESTRUCTURA DE RANKING CORREGIDA --- */
         .ranking-wrapper { 
             display: flex; 
-            gap: 10px; 
+            gap: 8px; 
             background: #f9f9f9; 
-            padding: 8px; 
+            padding: 10px; 
             border-radius: 8px; 
             border: 2px dashed #ddd; 
-            margin-bottom: 15px; 
+            margin-bottom: 15px;
+            align-items: flex-start;
         }
 
         #variables { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
 
-        /* Columna de números estática */
-        .columna-numeros { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 4px; 
-            user-select: none; 
-        }
+        .columna-numeros { display: flex; flex-direction: column; gap: 4px; user-select: none; }
 
         .num-estatico { 
-            height: 32px; /* Debe coincidir con la altura de variable-item */
+            height: 32px; 
+            width: 20px;
             display: flex; 
             align-items: center; 
             justify-content: center; 
             font-size: 0.75rem; 
             font-weight: bold; 
-            color: #bbb; 
+            color: #aaa; 
         }
 
         .variable-item { 
@@ -58,51 +54,52 @@
             border: 1px solid #ccc; 
             border-radius: 4px; 
             cursor: grab; 
-            font-size: 0.75rem; 
+            font-size: 0.7rem; 
             box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
             box-sizing: border-box;
         }
-        
-        /* Personalización */
-        .puntos-input {
-            width: 45px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 2px;
-            font-size: 0.7rem;
-            text-align: center;
-            display: none; 
-        }
-        .modo-personalizado .puntos-input { display: block; }
-        .modo-personalizado .btn-extra { display: inline-block; } /* Mostrar botones de control al personalizar */
-        
-        .btn-personalizar {
-            width: 100%;
-            margin-bottom: 5px;
-            padding: 8px;
-            background-color: #6c757d;
+
+        /* --- ETIQUETAS VERTICALES --- */
+        .columna-etiquetas { display: flex; flex-direction: column; gap: 4px; }
+
+        .grupo-etiqueta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 104px; /* (32px * 3) + (4px * 2) = 104px */
+            border-radius: 4px;
             color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.55rem;
             font-weight: bold;
+            text-align: center;
+            box-sizing: border-box;
         }
 
-        .controles-extra { display: flex; gap: 5px; margin-bottom: 10px; }
-        .btn-extra {
-            flex: 1;
-            padding: 5px;
-            font-size: 0.65rem;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            color: white;
-            display: none;
+        .grupo-etiqueta span {
+            writing-mode: vertical-lr;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            letter-spacing: 1px;
         }
+
+        .imp { background-color: #28a745; }
+        .m-imp { background-color: #007bff; }
+        .des { background-color: #ffc107; color: #333; }
+        .p-imp { background-color: #6c757d; }
+        .irr { background-color: #dc3545; }
+        
+        /* Personalización e Inputs */
+        .puntos-input { width: 45px; border: 1px solid #ddd; border-radius: 3px; padding: 2px; font-size: 0.7rem; text-align: center; display: none; }
+        .modo-personalizado .puntos-input { display: block; }
+        .modo-personalizado .btn-extra { display: inline-block; }
+        
+        .btn-personalizar { width: 100%; margin-bottom: 5px; padding: 8px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
+        .controles-extra { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn-extra { flex: 1; padding: 5px; font-size: 0.65rem; border: none; border-radius: 3px; cursor: pointer; color: white; display: none; }
 
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
         .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
@@ -120,14 +117,10 @@
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 5; }
 
-        .fila-seleccionada { background-color: #d1ecf1 !important; border-left: 5px solid #0c5460 !important; font-weight: bold; }
-        
         .detalle-wrapper { background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
         .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-calcular:hover { background-color: #0056b3; }
-        
-        .etiqueta-numero { background: transparent !important; border: none !important; color: white !important; font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black; }
     </style>
 </head>
 <body>
@@ -143,62 +136,44 @@
                 <button id="btn-reset" class="btn-extra" onclick="restablecerValores()" style="background-color: #ffc107; color: black;">RESTABLECER</button>
             </div>
             
-            <p style="font-size: 0.75rem; color: #666;">Arrastra las variables según tu prioridad:</p>
+            <p style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">Prioriza arrastrando las variables:</p>
             
-            <!-- CONTENEDOR CON RANKING Y ETIQUETAS DE IMPORTANCIA -->
+            <!-- RANKING CON COLUMNAS ESTÁTICAS -->
             <div class="ranking-wrapper">
-                <div id="variables"></div>
+                <div id="variables">
+                    <!-- JS inyectará aquí los items -->
+                </div>
                 
                 <div class="columna-numeros">
-                    <div class="num-estatico">1</div>
-                    <div class="num-estatico">2</div>
-                    <div class="num-estatico">3</div>
-                    <div class="num-estatico">4</div>
-                    <div class="num-estatico">5</div>
-                    <div class="num-estatico">6</div>
-                    <div class="num-estatico">7</div>
-                    <div class="num-estatico">8</div>
-                    <div class="num-estatico">9</div>
-                    <div class="num-estatico">10</div>
-                    <div class="num-estatico">11</div>
-                    <div class="num-estatico">12</div>
-                    <div class="num-estatico">13</div>
-                    <div class="num-estatico">14</div>
-                    <div class="num-estatico">15</div>
+                    <!-- Números del 1 al 15 -->
+                    <div class="num-estatico">1</div><div class="num-estatico">2</div><div class="num-estatico">3</div>
+                    <div class="num-estatico">4</div><div class="num-estatico">5</div><div class="num-estatico">6</div>
+                    <div class="num-estatico">7</div><div class="num-estatico">8</div><div class="num-estatico">9</div>
+                    <div class="num-estatico">10</div><div class="num-estatico">11</div><div class="num-estatico">12</div>
+                    <div class="num-estatico">13</div><div class="num-estatico">14</div><div class="num-estatico">15</div>
                 </div>
 
                 <div class="columna-etiquetas">
-                    <div class="grupo-etiqueta" style="height: 104px; border-left: 2px solid #28a745;">
-                        <span>Imprescindible</span>
-                    </div>
-                    <div class="grupo-etiqueta" style="height: 104px; border-left: 2px solid #007bff;">
-                        <span>Importante</span>
-                    </div>
-                    <div class="grupo-etiqueta" style="height: 104px; border-left: 2px solid #ffc107;">
-                        <span>Deseable</span>
-                    </div>
-                    <div class="grupo-etiqueta" style="height: 104px; border-left: 2px solid #6c757d;">
-                        <span>Poco importante</span>
-                    </div>
-                    <div class="grupo-etiqueta" style="height: 104px; border-left: 2px solid #dc3545;">
-                        <span>Irrelevante</span>
-                    </div>
+                    <div class="grupo-etiqueta imp"><span>IMPRESCINDIBLE</span></div>
+                    <div class="grupo-etiqueta m-imp"><span>IMPORTANTE</span></div>
+                    <div class="grupo-etiqueta des"><span>DESEABLE</span></div>
+                    <div class="grupo-etiqueta p-imp"><span>POCO IMP.</span></div>
+                    <div class="grupo-etiqueta irr"><span>IRRELEVANTE</span></div>
                 </div>
             </div>
 
             <div class="seccion-input">
                 <h3>Datos Financieros</h3>
-                <label style="font-size: 0.8rem;">Ingresos:</label>
+                <label style="font-size: 0.75rem;">Ingresos:</label>
                 <input type="number" id="ingresos" value="0">
-                <label style="font-size: 0.8rem;">Ahorros:</label>
+                <label style="font-size: 0.75rem;">Ahorros:</label>
                 <input type="number" id="ahorros" value="0">
-                <label style="font-size: 0.8rem;">Gastos:</label>
+                <label style="font-size: 0.75rem;">Gastos:</label>
                 <input type="number" id="gastos" value="0">
             </div>
 
             <div class="seccion-input">
                 <h3>Filtro de Afinidad (Score)</h3>
-                <p style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">Mostrar solo clusters con score dentro del:</p>
                 <input type="range" id="score-slider" min="0" max="100" value="100" step="1" oninput="actualizarFiltroScore(this.value)">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 5px;">
                     <span style="color: #28a745; font-weight: bold;">Mejor</span>
@@ -232,7 +207,7 @@
                         </div>
                     </div>
                     <div class="tabla-wrapper">
-                        <h3>Viviendas del Cluster (Escala Económica)</h3>
+                        <h3>Viviendas del Cluster</h3>
                         <div id="tabla-viviendas" class="tabla-scroll"></div>
                     </div>
                 </div>
