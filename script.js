@@ -42,11 +42,13 @@ document.addEventListener("DOMContentLoaded", function () {
         div.className = "variable-item";
         div.draggable = true;
         div.id = v;
-        // Se añade el input oculto por defecto que contiene el puntaje predefinido
+        // IMPORTANTE: El input NO tiene el ID de la variable, sino que es parte de la fila.
+        // Mantenemos una estructura donde el input se queda "fijo" visualmente en la fila.
         div.innerHTML = `
-            <span style="margin-right: 15px; color: #888;">☰</span> 
-            <b>${v.replace(/_/g, ' ')}</b>
-            <input type="number" class="puntos-input" value="${pesosPredefinidos[index]}" data-var="${v}" style="width: 50px; float: right; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span><span style="margin-right: 10px; color: #888;">☰</span> <b>${v.replace(/_/g, ' ')}</b></span>
+                <input type="number" class="puntos-input" value="${pesosPredefinidos[index]}" style="width: 55px; display: none;">
+            </div>
         `;
         
         div.ondragstart = (e) => e.dataTransfer.setData("text/plain", e.target.id);
@@ -57,6 +59,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const draggedElement = document.getElementById(data);
             const targetElement = e.target.closest(".variable-item");
             if (targetElement && draggedElement !== targetElement) {
+                // Al mover la variable, intercambiamos solo los nombres/IDs, pero podemos dejar los inputs en su sitio
+                // O simplemente mover el elemento completo y el usuario entenderá que la posición manda.
                 container.insertBefore(draggedElement, targetElement);
             }
         };
@@ -122,32 +126,28 @@ function colorScoreEconomico(sE, maxSE) {
 }
 
 // ==========================================
-// 4. CÁLCULO PRINCIPAL (MODIFICADO)
+// 4. CÁLCULO PRINCIPAL (LÓGICA ATADA A LA POSICIÓN)
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
 
     let mapaDePesos = {};
-    const container = document.getElementById("variables");
-    const esPersonalizado = container.classList.contains("modo-personalizado");
+    
+    // Obtenemos todas las "cajitas" de variables en su orden actual de la pantalla
+    const filasVariables = document.querySelectorAll(".variable-item");
 
-    if (esPersonalizado) {
-        // Leemos los valores escritos en los inputs
-        document.querySelectorAll(".puntos-input").forEach(input => {
-            mapaDePesos[input.dataset.var] = parseFloat(input.value) || 0;
-        });
-    } else {
-        // Lógica original basada en la posición de arrastre
-        const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
-        listaOrdenada.forEach((nombreVar, index) => {
-            mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
-            // Sincronizamos el valor del input para que el usuario vea qué puntaje tiene al activar el modo
-            const input = document.querySelector(`.puntos-input[data-var="${nombreVar}"]`);
-            if (input) input.value = pesosPredefinidos[index];
-        });
-    }
+    filasVariables.forEach((fila) => {
+        const nombreVariable = fila.id; // El ID de la variable que está en esta posición
+        const inputDeEstaFila = fila.querySelector(".puntos-input");
+        
+        // El peso ahora SIEMPRE viene de lo que diga el input de esa posición actual
+        mapaDePesos[nombreVariable] = parseFloat(inputDeEstaFila.value) || 0;
+    });
 
+    // Convertimos el mapa de pesos a un array alineado con el orden original de 'const variables'
+    // para que el cálculo matemático no se rompa
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
+    
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
