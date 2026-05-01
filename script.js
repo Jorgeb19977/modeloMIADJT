@@ -121,8 +121,19 @@ function ponerCero() {
 }
 
 function restablecerValores() {
-    // Re-ordenar al estado inicial y resetear valores
-    renderizarListaVariables();
+    // 1. Obtenemos todos los items de variables en el orden que los tiene el usuario en pantalla
+    const itemsActuales = document.querySelectorAll(".variable-item");
+    
+    // 2. A cada uno le asignamos el peso que le corresponde según su posición actual
+    itemsActuales.forEach((item, index) => {
+        const input = item.querySelector(".puntos-input");
+        if (input) {
+            // Asigna el peso predefinido basado en el nuevo índice (0=183, 1=179, etc.)
+            input.value = pesosPredefinidos[index] || 0;
+        }
+    });
+    
+    console.log("Pesos restablecidos manteniendo el orden actual.");
 }
 
 function calcularLimites() {
