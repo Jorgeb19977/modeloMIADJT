@@ -181,4 +181,178 @@ function calcular() {
     document.getElementById("resultado").innerText = "Cálculo actualizado.";
 }
 
-// ... (Resto de funciones: renderizarVistasFiltradas, filtrarMapa2, etc. se mantienen igual)
+
+
+// ==========================================
+// 5. RENDERIZADO FILTRADO Y EVENTOS MAPA 1
+// ==========================================
+function actualizarFiltroScore(valor) {
+    document.getElementById("score-valor").innerText = valor + "%";
+    renderizarVistasFiltradas();
+}
+
+function renderizarVistasFiltradas() {
+    if (ultimoResultadoClusters.length === 0) return;
+
+    const sliderVal = parseFloat(document.getElementById("score-slider").value);
+    const umbralPorcentaje = sliderVal / 100;
+    
+    const scoresArray = Object.values(scoresPorClusterId);
+    const minGlobal = Math.min(...scoresArray);
+    const maxGlobal = Math.max(...scoresArray);
+    const scoreMaximoPermitido = minGlobal + (maxGlobal - minGlobal) * umbralPorcentaje;
+
+    capaPuntos.clearLayers();
+    viviendas.forEach(p => {
+        let sc = scoresPorClusterId[p.Clusters]; 
+        if (sc !== undefined && sc <= scoreMaximoPermitido) {
+            let col = colorScore(sc, minGlobal, maxGlobal);
+            let marcador = L.circleMarker([p.lat, p.lon], { 
+                radius: 3, color: col, stroke: true, weight: 0.5, fillOpacity: 0.8 
+            });
+            marcador.on('click', () => filtrarMapa2(p.Clusters));
+            marcador.addTo(capaPuntos);
+        }
+    });
+
+    let clustersFiltrados = ultimoResultadoClusters.filter(c => c.scoreCluster <= scoreMaximoPermitido);
+    let h1 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
+    clustersFiltrados.forEach(c => {
+        const filaClusterId = `fila-cluster-${c.id}`;
+        h1 += `<tr id="${filaClusterId}" style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
+                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
+                <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
+    });
+    document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
+}
+
+// ==========================================
+// 6. DETALLE (MAPAS 2A/2B) Y ZOOM
+// ==========================================
+function filtrarMapa2(clusterId) {
+    document.querySelectorAll("#tabla-clusters tr").forEach(tr => tr.classList.remove("fila-seleccionada"));
+    const fila = document.getElementById(`fila-cluster-${clusterId}`);
+    if (fila) {
+        fila.classList.add("fila-seleccionada");
+        fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    capaPuntos2A.clearLayers();
+    capaPuntos2B.clearLayers();
+
+    viviendas.forEach(p => {
+        let esDelCluster = (p.Clusters === clusterId);
+        L.circleMarker([p.lat, p.lon], {
+            radius: 2, color: esDelCluster ? "#00008B" : "#D3D3D3", stroke: false, fillOpacity: esDelCluster ? 0.9 : 0.4
+        }).addTo(capaPuntos2A);
+    });
+
+    const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
+    const Ca = (parseFloat(document.getElementById("ingresos").value) - parseFloat(document.getElementById("ahorros").value) - parseFloat(document.getElementById("gastos").value)) * 0.733;
+
+    let vOrdenadas = vFiltradas
+        .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
+        .sort((a, b) => a.sE - b.sE);
+
+    const maxSEActual = vOrdenadas.length > 0 ? Math.max(...vOrdenadas.map(v => v.sE)) : 0;
+
+    let h2 = `<table border="1" style="width:100%; border-collapse:collapse;"><tr style="background:#ffd700; position:sticky; top:0;"><th>#</th><th>Precio</th><th>Score Econ.</th><th>Acción</th></tr>`;
+    vOrdenadas.forEach((v, i) => {
+        const filaId = `fila-${v.lat}-${v.lon}`.replace(/\./g, '_');
+        h2 += `<tr id="${filaId}"><td>${i+1}</td><td>$${v.Precio.toLocaleString()}</td><td>${v.sE.toFixed(4)}</td>
+               <td><button onclick="hacerZoomVivienda(${v.lat}, ${v.lon}, ${v.Precio})">📍 Ver</button></td></tr>`;
+    });
+    document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
+
+    vOrdenadas.forEach((p, i) => {
+        let colEco = colorScoreEconomico(p.sE, maxSEActual);
+        let marcador = L.circleMarker([p.lat, p.lon], { radius: 9, color: colEco, fillColor: colEco, fillOpacity: 0.9, weight: 2 }).addTo(capaPuntos2B);
+        marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
+        marcador.viviendaID = `${p.lat}-${p.lon}`; 
+        marcador.colorOriginal = colEco; 
+        marcador.on('click', () => hacerZoomVivienda(p.lat, p.lon, p.Precio));
+    });
+
+    if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds());
+}
+
+function hacerZoomVivienda(lat, lon, precio) {
+    map2B.setView([lat, lon], 17);
+    capaPuntos2B.eachLayer(layer => {
+        if (layer instanceof L.CircleMarker && layer.viviendaID) {
+            if (layer.viviendaID === `${lat}-${lon}`) {
+                layer.setStyle({ color: '#FF00FF', fillColor: '#FF00FF', weight: 6, radius: 12 });
+                layer.bringToFront();
+            } else {
+                layer.setStyle({ color: layer.colorOriginal, fillColor: layer.colorOriginal, weight: 2, radius: 9 });
+            }
+        }
+    });
+
+    document.querySelectorAll("#tabla-viviendas tr").forEach(tr => {
+        tr.style.backgroundColor = ""; tr.style.fontWeight = "normal";
+    });
+    const filaId = `fila-${lat}-${lon}`.replace(/\./g, '_');
+    const fila = document.getElementById(filaId);
+    if (fila) {
+        fila.style.backgroundColor = "#fff9c4"; fila.style.fontWeight = "bold";
+        fila.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    const registro = viviendas.find(v => v.lat === lat && v.lon === lon);
+    if (registro) generarFichaTecnica(registro);
+}
+
+function resaltarClusterEnMapa1(clusterId) {
+    capaResaltado.clearLayers();
+    const puntosCluster = viviendas.filter(v => v.Clusters === clusterId);
+    if (puntosCluster.length > 0) {
+        const lats = puntosCluster.map(p => p.lat);
+        const lons = puntosCluster.map(p => p.lon);
+        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
+        L.rectangle(bounds, {color: "#ff0000", weight: 3, fillOpacity: 0, dashArray: "5, 5"}).addTo(capaResaltado);
+    }
+}
+
+function quitarResaltado() { capaResaltado.clearLayers(); }
+
+// ==========================================
+// 7. FICHA TÉCNICA DINÁMICA
+// ==========================================
+function generarFichaTecnica(registro) {
+    const mapaNombres = {
+        "Dist_CC_m": "CC_Cercano", "Dist_Metro_m": "Metro_Ref", "Dist_Gastro_m": "Gastro_Cercano",
+        "Dist_Educa_m": "Educa", "Dist_TM_m": "Estacion_TM_Cercana", "Vulnerabilidad_Agua_num": "Vulnerabilidad_Agua"
+    };
+
+    let html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 10px;">`;
+
+    const crearCuadro = (etiqueta, valor, clave) => {
+        const lim = limitesGlobales[clave] || { min: 0, max: 1 };
+        let porc = Math.max(0, Math.min(100, ((valor - lim.min) / (lim.max - lim.min)) * 100));
+        return `
+            <div style="background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px; min-height: 85px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <small style="color: #777; font-size: 0.6rem; text-transform: uppercase;">${etiqueta}:</small><br>
+                    <strong style="font-size: 0.85rem;">${typeof valor === 'number' && !Number.isInteger(valor) ? valor.toFixed(1) : valor.toLocaleString()}</strong>
+                </div>
+                <div style="width: 100%; height: 4px; background: #eee; margin-top: 8px; border-radius: 2px;">
+                    <div style="width: ${porc}%; height: 100%; background: #4caf50;"></div>
+                </div>
+            </div>`;
+    };
+
+    html += crearCuadro("PRECIO TOTAL", registro.Precio, "Precio");
+    variables.forEach(v => {
+        let nom = v.replace(/_/g, ' ');
+        let val = registro[v];
+        let extra = "";
+        if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
+        else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
+        if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
+        if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
+        let cuadro = crearCuadro(nom, val, v);
+        if (extra) cuadro = cuadro.replace("</strong>", "</strong>" + extra);
+        html += cuadro;
+    });
+    document.getElementById("detalle-vivienda").innerHTML = html + `</div>`;
+}
