@@ -23,15 +23,18 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
+    // Mapa 1: General
     map = L.map('map').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
+    // Mapa 2A: Contexto
     map2A = L.map('map2A', { zoomControl: false }).setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
+    // Mapa 2B: Score Económico (El que fallaba)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
@@ -74,37 +77,19 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ==========================================
-// 3. FUNCIONES DE APOYO Y MODO PERSONALIZADO
+// 3. FUNCIONES DE APOYO
 // ==========================================
 function togglePersonalizacion() {
     const container = document.getElementById("variables");
     const esPersonalizado = container.classList.toggle("modo-personalizado");
-    const inputs = document.querySelectorAll(".puntos-input");
-    
-    inputs.forEach(input => { input.style.display = esPersonalizado ? "inline-block" : "none"; });
-
-    const btnCero = document.getElementById("btn-cero");
-    const btnReset = document.getElementById("btn-reset");
-    if (btnCero) btnCero.style.display = esPersonalizado ? "inline-block" : "none";
-    if (btnReset) btnReset.style.display = esPersonalizado ? "inline-block" : "none";
-
+    document.querySelectorAll(".puntos-input").forEach(input => {
+        input.style.display = esPersonalizado ? "inline-block" : "none";
+    });
     const btn = document.querySelector(".btn-personalizar");
     if (btn) {
         btn.innerText = esPersonalizado ? "BLOQUEAR PUNTOS" : "PERSONALIZAR PUNTOS";
         btn.style.backgroundColor = esPersonalizado ? "#28a745" : "#6c757d";
     }
-}
-
-function ponerCero() {
-    document.querySelectorAll(".puntos-input").forEach(input => { input.value = 0; });
-}
-
-function restablecerValores() {
-    const itemsActuales = Array.from(document.querySelectorAll(".variable-item"));
-    itemsActuales.forEach((div, index) => {
-        const input = div.querySelector(".puntos-input");
-        if (input) { input.value = pesosPredefinidos[index]; }
-    });
 }
 
 function calcularLimites() {
@@ -116,7 +101,7 @@ function calcularLimites() {
     limitesGlobales["Precio"] = { min: Math.min(...precios), max: Math.max(...precios) };
 }
 
-// Colores para Mapa 1 (Afinidad de Cluster)
+// Color para el Mapa 1 (Afinidad)
 function colorScore(score, minScore, maxScore) {
     let x = (maxScore !== minScore) ? (score - minScore) / (maxScore - minScore) : 0;
     if (x <= 0.1) return "#000080";
@@ -127,17 +112,16 @@ function colorScore(score, minScore, maxScore) {
     return "#8B0000";
 }
 
-// Colores para Mapa 2B (Score Económico)
+// COLOR CORREGIDO PARA MAPA 2B (SCORE ECONÓMICO)
 function colorScoreEconomico(sE, maxSE) {
-    let x = maxSE !== 0 ? sE / maxSE : 0;
-    // Escala: Azul (Cercano al presupuesto) -> Amarillo -> Rojo (Lejos)
-    if (x <= 0.3) return "#28a745"; // Verde (Muy accesible)
-    if (x <= 0.7) return "#ffc107"; // Amarillo (Medio)
-    return "#dc3545";               // Rojo (Poco accesible)
+    // sE es la diferencia porcentual con el presupuesto. 0 es perfecto.
+    if (sE <= 0.1) return "#28a745"; // Verde (Muy accesible)
+    if (sE <= 0.3) return "#ffc107"; // Amarillo (Aceptable)
+    return "#dc3545";               // Rojo (Caro / Lejos)
 }
 
 // ==========================================
-// 4. CÁLCULO PRINCIPAL
+// 4. CÁLCULO
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
@@ -146,18 +130,17 @@ function calcular() {
     const container = document.getElementById("variables");
     const esPersonalizado = container.classList.contains("modo-personalizado");
 
-    if (esPersonalizado) {
-        document.querySelectorAll(".puntos-input").forEach(input => {
+    document.querySelectorAll(".puntos-input").forEach((input, index) => {
+        if (esPersonalizado) {
             mapaDePesos[input.dataset.var] = parseFloat(input.value) || 0;
-        });
-    } else {
-        const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
-        listaOrdenada.forEach((nombreVar, index) => {
-            mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
-            const input = document.querySelector(`.puntos-input[data-var="${nombreVar}"]`);
-            if (input) input.value = pesosPredefinidos[index];
-        });
-    }
+        } else {
+            const varName = input.dataset.var;
+            const items = Array.from(document.querySelectorAll(".variable-item"));
+            const idxReal = items.findIndex(item => item.id === varName);
+            mapaDePesos[varName] = pesosPredefinidos[idxReal];
+            input.value = pesosPredefinidos[idxReal];
+        }
+    });
 
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
@@ -183,14 +166,11 @@ function calcular() {
     }).sort((a, b) => a.scoreCluster - b.scoreCluster);
 
     renderizarVistasFiltradas();
-    
-    if (ultimoResultadoClusters.length > 0) {
-        filtrarMapa2(ultimoResultadoClusters[0].id);
-    }
+    if (ultimoResultadoClusters.length > 0) filtrarMapa2(ultimoResultadoClusters[0].id);
 }
 
 // ==========================================
-// 5. RENDERIZADO FILTRADO Y EVENTOS MAPA 1
+// 5. RENDERIZADO MAPA 1
 // ==========================================
 function actualizarFiltroScore(valor) {
     document.getElementById("score-valor").innerText = valor + "%";
@@ -198,11 +178,8 @@ function actualizarFiltroScore(valor) {
 }
 
 function renderizarVistasFiltradas() {
-    if (ultimoResultadoClusters.length === 0) return;
-
     const sliderVal = parseFloat(document.getElementById("score-slider").value);
     const umbralPorcentaje = sliderVal / 100;
-    
     const scoresArray = Object.values(scoresPorClusterId);
     const minGlobal = Math.min(...scoresArray);
     const maxGlobal = Math.max(...scoresArray);
@@ -213,11 +190,9 @@ function renderizarVistasFiltradas() {
         let sc = scoresPorClusterId[p.Clusters]; 
         if (sc !== undefined && sc <= scoreMaximoPermitido) {
             let col = colorScore(sc, minGlobal, maxGlobal);
-            let marcador = L.circleMarker([p.lat, p.lon], { 
+            L.circleMarker([p.lat, p.lon], { 
                 radius: 4, fillColor: col, color: "#fff", weight: 0.5, fillOpacity: 0.8 
-            });
-            marcador.on('click', () => filtrarMapa2(p.Clusters));
-            marcador.addTo(capaPuntos);
+            }).on('click', () => filtrarMapa2(p.Clusters)).addTo(capaPuntos);
         }
     });
 
@@ -225,24 +200,27 @@ function renderizarVistasFiltradas() {
     let h1 = `<table style="width:100%; border-collapse:collapse;"><tr style="background:#eee; position:sticky; top:0;"><th>Cluster</th><th>Puntos</th><th>Score</th><th>Econ. Prom</th></tr>`;
     clustersFiltrados.forEach(c => {
         h1 += `<tr id="fila-cluster-${c.id}" style="cursor:pointer;" onclick="filtrarMapa2(${c.id})" onmouseover="resaltarClusterEnMapa1(${c.id})" onmouseout="quitarResaltado()">
-                <td style="color: blue; text-decoration: underline;"><b>Cluster ${c.id}</b></td>
-                <td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
+                <td><b>Cluster ${c.id}</b></td><td>${c.puntos}</td><td>${c.scoreCluster.toFixed(4)}</td><td>${c.scoreEProm.toFixed(4)}</td></tr>`;
     });
     document.getElementById("tabla-clusters").innerHTML = h1 + `</table>`;
 }
 
 // ==========================================
-// 6. DETALLE (MAPAS 2A/2B) Y ZOOM
+// 6. DETALLE (MAPA 2A Y 2B CORREGIDO)
 // ==========================================
 function filtrarMapa2(clusterId) {
     document.querySelectorAll("#tabla-clusters tr").forEach(tr => tr.style.background = "");
-    const fila = document.getElementById(`fila-cluster-${clusterId}`);
-    if (fila) { fila.style.background = "#e3f2fd"; }
+    const filaC = document.getElementById(`fila-cluster-${clusterId}`);
+    if (filaC) filaC.style.background = "#e3f2fd";
 
     capaPuntos2A.clearLayers();
     capaPuntos2B.clearLayers();
 
-    // Mapa 2A: Contexto (Gris vs Azul)
+    const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
+    const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
+    const gastos = parseFloat(document.getElementById("gastos").value) || 0;
+    const Ca = (ingresos - ahorros - gastos) * 0.733;
+
     viviendas.forEach(p => {
         let esDelCluster = (p.Clusters === clusterId);
         L.circleMarker([p.lat, p.lon], {
@@ -250,13 +228,7 @@ function filtrarMapa2(clusterId) {
         }).addTo(capaPuntos2A);
     });
 
-    // Mapa 2B: Score Económico
     const vFiltradas = viviendas.filter(v => v.Clusters === clusterId);
-    const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
-    const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
-    const gastos = parseFloat(document.getElementById("gastos").value) || 0;
-    const Ca = (ingresos - ahorros - gastos) * 0.733;
-
     let vOrdenadas = vFiltradas
         .map(v => ({ ...v, sE: Ca !== 0 ? Math.abs((v.Precio - Ca) / Ca) : 0 }))
         .sort((a, b) => a.sE - b.sE);
@@ -270,13 +242,15 @@ function filtrarMapa2(clusterId) {
         h2 += `<tr id="${filaId}"><td>${i+1}</td><td>$${p.Precio.toLocaleString()}</td><td>${p.sE.toFixed(4)}</td>
                <td><button onclick="hacerZoomVivienda(${p.lat}, ${p.lon})">📍 Ver</button></td></tr>`;
 
+        // CORRECCIÓN DE COLOR AQUÍ
         let colEco = colorScoreEconomico(p.sE, maxSEActual);
+        
         let marcador = L.circleMarker([p.lat, p.lon], { 
-            radius: 8, 
+            radius: 9, 
             fillColor: colEco, 
-            color: "#fff", 
-            weight: 2, 
-            fillOpacity: 0.9 
+            color: "#000", 
+            weight: 1, 
+            fillOpacity: 1 // Forzamos opacidad total para evitar el blanco
         }).addTo(capaPuntos2B);
         
         marcador.bindTooltip(`${i+1}`, {permanent: true, direction: 'center', className: 'etiqueta-numero'});
@@ -286,37 +260,35 @@ function filtrarMapa2(clusterId) {
     });
 
     document.getElementById("tabla-viviendas").innerHTML = h2 + `</table>`;
-    if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds());
+    if (vOrdenadas.length > 0) map2B.fitBounds(new L.featureGroup(capaPuntos2B.getLayers()).getBounds(), {padding: [20, 20]});
 }
 
 function hacerZoomVivienda(lat, lon) {
     map2B.setView([lat, lon], 17);
     
-    // Resaltar en Mapa 2B
     capaPuntos2B.eachLayer(layer => {
         if (layer.viviendaID) {
             if (layer.viviendaID === `${lat}-${lon}`) {
                 layer.setStyle({ 
-                    fillColor: '#FF00FF', // Magenta neón para resaltar
+                    fillColor: '#FF00FF', // MAGENTA PARA EL SELECCIONADO
                     color: '#000', 
-                    weight: 4, 
-                    radius: 12,
+                    weight: 5, 
+                    radius: 14,
                     fillOpacity: 1
                 });
                 layer.bringToFront();
             } else {
                 layer.setStyle({ 
                     fillColor: layer.colorOriginal, 
-                    color: "#fff", 
-                    weight: 2, 
-                    radius: 8,
-                    fillOpacity: 0.9
+                    color: "#000", 
+                    weight: 1, 
+                    radius: 9,
+                    fillOpacity: 1
                 });
             }
         }
     });
 
-    // Resaltar en Tabla
     document.querySelectorAll("#tabla-viviendas tr").forEach(tr => tr.style.background = "");
     const filaId = `fila-${lat}-${lon}`.replace(/\./g, '_');
     const fila = document.getElementById(filaId);
@@ -335,15 +307,15 @@ function resaltarClusterEnMapa1(clusterId) {
     if (puntosCluster.length > 0) {
         const lats = puntosCluster.map(p => p.lat);
         const lons = puntosCluster.map(p => p.lon);
-        const bounds = [[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]];
-        L.rectangle(bounds, {color: "#ff0000", weight: 2, fillOpacity: 0.1, dashArray: "5, 5"}).addTo(capaResaltado);
+        L.rectangle([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], 
+        {color: "#ff0000", weight: 2, fillOpacity: 0.1, dashArray: "5, 5"}).addTo(capaResaltado);
     }
 }
 
 function quitarResaltado() { capaResaltado.clearLayers(); }
 
 // ==========================================
-// 7. FICHA TÉCNICA DINÁMICA
+// 7. FICHA TÉCNICA
 // ==========================================
 function generarFichaTecnica(registro) {
     const mapaNombres = {
@@ -375,8 +347,6 @@ function generarFichaTecnica(registro) {
         let extra = "";
         if (v === "Estrato_Manzana_score") { nom = "Estrato Manzana"; val = registro["Estrato_Manzana"]; }
         else if (mapaNombres[v] && registro[mapaNombres[v]]) { extra = `<br><span style="color:#2e7d32; font-size:0.65rem; font-weight:bold;">${registro[mapaNombres[v]]}</span>`; }
-        if (nom.startsWith("Dist ")) nom = "Dist. " + nom.replace("Dist ", "").replace(" m", "");
-        if (v === "Vulnerabilidad_Agua_num") nom = "Vuln. Agua";
         let cuadro = crearCuadro(nom, val, v);
         if (extra) cuadro = cuadro.replace("</strong>", "</strong>" + extra);
         html += cuadro;
