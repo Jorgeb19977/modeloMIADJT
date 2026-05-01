@@ -20,13 +20,55 @@
 
         h2, h3 { margin: 0 0 10px 0; color: #333; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* Variables y Inputs */
-        #variables { display: flex; flex-direction: column; gap: 4px; background: #f9f9f9; padding: 8px; border-radius: 8px; border: 2px dashed #ddd; margin-bottom: 15px; }
-        .variable-item { padding: 5px 10px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: grab; font-size: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
+        /* --- ESTRUCTURA DE VARIABLES Y RANKING --- */
+        .ranking-wrapper { 
+            display: flex; 
+            gap: 10px; 
+            background: #f9f9f9; 
+            padding: 8px; 
+            border-radius: 8px; 
+            border: 2px dashed #ddd; 
+            margin-bottom: 15px; 
+        }
+
+        #variables { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
+
+        /* Columna de números estática */
+        .columna-numeros { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+            user-select: none; 
+        }
+
+        .num-estatico { 
+            height: 32px; /* Debe coincidir con la altura de variable-item */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.75rem; 
+            font-weight: bold; 
+            color: #bbb; 
+        }
+
+        .variable-item { 
+            height: 32px; 
+            padding: 0 10px; 
+            background: white; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            cursor: grab; 
+            font-size: 0.75rem; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            box-sizing: border-box;
+        }
         
-        /* Estilos de Personalización */
+        /* Personalización */
         .puntos-input {
-            width: 50px;
+            width: 45px;
             border: 1px solid #ddd;
             border-radius: 3px;
             padding: 2px;
@@ -35,6 +77,7 @@
             display: none; 
         }
         .modo-personalizado .puntos-input { display: block; }
+        .modo-personalizado .btn-extra { display: inline-block; } /* Mostrar botones de control al personalizar */
         
         .btn-personalizar {
             width: 100%;
@@ -49,7 +92,6 @@
             font-weight: bold;
         }
 
-        /* Botones de acción rápida ocultos */
         .controles-extra { display: flex; gap: 5px; margin-bottom: 10px; }
         .btn-extra {
             flex: 1;
@@ -59,7 +101,7 @@
             border-radius: 3px;
             cursor: pointer;
             color: white;
-            display: none; /* Ocultos por defecto */
+            display: none;
         }
 
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
@@ -96,14 +138,34 @@
             
             <button class="btn-personalizar" onclick="togglePersonalizacion()">PERSONALIZAR PUNTOS</button>
             
-            <!-- CONTENEDOR DE BOTONES EXTRA (0 Y RESTABLECER) -->
             <div class="controles-extra">
                 <button id="btn-cero" class="btn-extra" onclick="ponerCero()" style="background-color: #dc3545;">PONER EN 0</button>
                 <button id="btn-reset" class="btn-extra" onclick="restablecerValores()" style="background-color: #ffc107; color: black;">RESTABLECER</button>
             </div>
             
-            <p style="font-size: 0.75rem; color: #666;">Arrastra las variables o edita sus puntos:</p>
-            <div id="variables"></div>
+            <p style="font-size: 0.75rem; color: #666;">Arrastra las variables según tu prioridad:</p>
+            
+            <!-- CONTENEDOR CON RANKING ESTÁTICO -->
+            <div class="ranking-wrapper">
+                <div id="variables"></div>
+                <div class="columna-numeros">
+                    <div class="num-estatico">1</div>
+                    <div class="num-estatico">2</div>
+                    <div class="num-estatico">3</div>
+                    <div class="num-estatico">4</div>
+                    <div class="num-estatico">5</div>
+                    <div class="num-estatico">6</div>
+                    <div class="num-estatico">7</div>
+                    <div class="num-estatico">8</div>
+                    <div class="num-estatico">9</div>
+                    <div class="num-estatico">10</div>
+                    <div class="num-estatico">11</div>
+                    <div class="num-estatico">12</div>
+                    <div class="num-estatico">13</div>
+                    <div class="num-estatico">14</div>
+                    <div class="num-estatico">15</div>
+                </div>
+            </div>
 
             <div class="seccion-input">
                 <h3>Datos Financieros</h3>
