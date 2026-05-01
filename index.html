@@ -24,7 +24,7 @@
         #variables { display: flex; flex-direction: column; gap: 4px; background: #f9f9f9; padding: 8px; border-radius: 8px; border: 2px dashed #ddd; margin-bottom: 15px; }
         .variable-item { padding: 5px 10px; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: grab; font-size: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
         
-        /* --- NUEVOS ESTILOS PARA PERSONALIZACIÓN --- */
+        /* Estilos de Personalización */
         .puntos-input {
             width: 50px;
             border: 1px solid #ddd;
@@ -32,12 +32,13 @@
             padding: 2px;
             font-size: 0.7rem;
             text-align: center;
-            display: none; /* Oculto por defecto */
+            display: none; 
         }
         .modo-personalizado .puntos-input { display: block; }
+        
         .btn-personalizar {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             padding: 8px;
             background-color: #6c757d;
             color: white;
@@ -46,9 +47,20 @@
             cursor: pointer;
             font-size: 0.75rem;
             font-weight: bold;
-            transition: 0.3s;
         }
-        /* ------------------------------------------ */
+
+        /* Botones de acción rápida ocultos */
+        .controles-extra { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn-extra {
+            flex: 1;
+            padding: 5px;
+            font-size: 0.65rem;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            color: white;
+            display: none; /* Ocultos por defecto */
+        }
 
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
         .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
@@ -66,15 +78,11 @@
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 5; }
 
-        .fila-seleccionada {
-            background-color: #d1ecf1 !important;
-            border-left: 5px solid #0c5460 !important;
-            font-weight: bold;
-        }
+        .fila-seleccionada { background-color: #d1ecf1 !important; border-left: 5px solid #0c5460 !important; font-weight: bold; }
         
         .detalle-wrapper { background: #fffde7; padding: 15px; border-radius: 8px; border: 1px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-calcular:hover { background-color: #0056b3; }
         
         .etiqueta-numero { background: transparent !important; border: none !important; color: white !important; font-weight: bold !important; font-size: 10px !important; text-shadow: 1px 1px 2px black; }
@@ -86,8 +94,13 @@
         <div class="sidebar">
             <h2>Configuración</h2>
             
-            <!-- NUEVO BOTÓN DE PERSONALIZACIÓN -->
             <button class="btn-personalizar" onclick="togglePersonalizacion()">PERSONALIZAR PUNTOS</button>
+            
+            <!-- CONTENEDOR DE BOTONES EXTRA (0 Y RESTABLECER) -->
+            <div class="controles-extra">
+                <button id="btn-cero" class="btn-extra" onclick="ponerCero()" style="background-color: #dc3545;">PONER EN 0</button>
+                <button id="btn-reset" class="btn-extra" onclick="restablecerValores()" style="background-color: #ffc107; color: black;">RESTABLECER</button>
+            </div>
             
             <p style="font-size: 0.75rem; color: #666;">Arrastra las variables o edita sus puntos:</p>
             <div id="variables"></div>

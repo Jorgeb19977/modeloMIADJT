@@ -42,25 +42,13 @@ document.addEventListener("DOMContentLoaded", function () {
         div.className = "variable-item";
         div.draggable = true;
         div.id = v;
-        // Agregamos un contenedor interno para que el drag and drop no rompa la estructura
         div.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; pointer-events: none;">
-                <span style="pointer-events: none;">
-                    <span style="margin-right: 10px; color: #888;">☰</span> 
-                    <b>${v.replace(/_/g, ' ')}</b>
-                </span>
-                <input type="number" class="puntos-input" 
-                       value="${pesosPredefinidos[index]}" 
-                       style="width: 60px; pointer-events: auto; display: none;" 
-                       onclick="event.stopPropagation();">
-            </div>
+            <span style="margin-right: 15px; color: #888;">☰</span> 
+            <b>${v.replace(/_/g, ' ')}</b>
+            <input type="number" class="puntos-input" value="${pesosPredefinidos[index]}" data-var="${v}" style="width: 50px; float: right; display: none;">
         `;
         
-        div.ondragstart = (e) => {
-            e.dataTransfer.setData("text/plain", e.target.id);
-            e.target.style.opacity = "0.5";
-        };
-        div.ondragend = (e) => e.target.style.opacity = "1";
+        div.ondragstart = (e) => e.dataTransfer.setData("text/plain", e.target.id);
         div.ondragover = (e) => e.preventDefault();
         div.ondrop = (e) => {
             e.preventDefault();
@@ -86,21 +74,48 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ==========================================
-// 3. FUNCIONES DE APOYO Y PERSONALIZACIÓN
+// 3. FUNCIONES DE APOYO Y MODO PERSONALIZADO
 // ==========================================
 function togglePersonalizacion() {
     const container = document.getElementById("variables");
-    const esActivo = container.classList.toggle("modo-personalizado");
+    const esPersonalizado = container.classList.toggle("modo-personalizado");
+    const inputs = document.querySelectorAll(".puntos-input");
     
-    document.querySelectorAll(".puntos-input").forEach(input => {
-        input.style.display = esActivo ? "block" : "none";
+    // Mostrar/Ocultar inputs
+    inputs.forEach(input => {
+        input.style.display = esPersonalizado ? "inline-block" : "none";
     });
+
+    // Mostrar/Ocultar botones de control extra (si existen en el HTML)
+    const btnCero = document.getElementById("btn-cero");
+    const btnReset = document.getElementById("btn-reset");
+    
+    if (btnCero) btnCero.style.display = esPersonalizado ? "inline-block" : "none";
+    if (btnReset) btnReset.style.display = esPersonalizado ? "inline-block" : "none";
 
     const btn = document.querySelector(".btn-personalizar");
     if (btn) {
-        btn.innerText = esActivo ? "BLOQUEAR PUNTOS" : "PERSONALIZAR PUNTOS";
-        btn.style.backgroundColor = esActivo ? "#28a745" : "#6c757d";
+        btn.innerText = esPersonalizado ? "BLOQUEAR PUNTOS" : "PERSONALIZAR PUNTOS";
+        btn.style.backgroundColor = esPersonalizado ? "#28a745" : "#6c757d";
     }
+}
+
+// NUEVA: Poner todos los inputs en 0
+function ponerCero() {
+    document.querySelectorAll(".puntos-input").forEach(input => {
+        input.value = 0;
+    });
+}
+
+// NUEVA: Restablecer valores según el orden visual actual
+function restablecerValores() {
+    const itemsActuales = Array.from(document.querySelectorAll(".variable-item"));
+    itemsActuales.forEach((div, index) => {
+        const input = div.querySelector(".puntos-input");
+        if (input) {
+            input.value = pesosPredefinidos[index];
+        }
+    });
 }
 
 function calcularLimites() {
@@ -132,24 +147,29 @@ function colorScoreEconomico(sE, maxSE) {
 }
 
 // ==========================================
-// 4. CÁLCULO PRINCIPAL (FIJO)
+// 4. CÁLCULO PRINCIPAL
 // ==========================================
 function calcular() {
     if (viviendas.length === 0 || centroides.length === 0) return;
 
     let mapaDePesos = {};
-    const items = document.querySelectorAll(".variable-item");
+    const container = document.getElementById("variables");
+    const esPersonalizado = container.classList.contains("modo-personalizado");
 
-    // Recorremos la lista tal cual aparece en el DOM para capturar el valor del input al lado de su variable
-    items.forEach((item) => {
-        const varName = item.id;
-        const valInput = item.querySelector(".puntos-input").value;
-        mapaDePesos[varName] = parseFloat(valInput) || 0;
-    });
+    if (esPersonalizado) {
+        document.querySelectorAll(".puntos-input").forEach(input => {
+            mapaDePesos[input.dataset.var] = parseFloat(input.value) || 0;
+        });
+    } else {
+        const listaOrdenada = Array.from(document.querySelectorAll(".variable-item")).map(el => el.id);
+        listaOrdenada.forEach((nombreVar, index) => {
+            mapaDePesos[nombreVar] = pesosPredefinidos[index]; 
+            const input = document.querySelector(`.puntos-input[data-var="${nombreVar}"]`);
+            if (input) input.value = pesosPredefinidos[index];
+        });
+    }
 
-    // IMPORTANTE: Creamos los pesos en el mismo orden que el array original 'variables'
     const current_weights = variables.map(v => (mapaDePesos[v] || 0) / 1000);
-
     const ingresos = parseFloat(document.getElementById("ingresos").value) || 0;
     const ahorros = parseFloat(document.getElementById("ahorros").value) || 0;
     const gastos = parseFloat(document.getElementById("gastos").value) || 0;
@@ -173,9 +193,13 @@ function calcular() {
     }).sort((a, b) => a.scoreCluster - b.scoreCluster);
 
     renderizarVistasFiltradas();
-    if (ultimoResultadoClusters.length > 0) filtrarMapa2(ultimoResultadoClusters[0].id);
+    
+    if (ultimoResultadoClusters.length > 0) {
+        filtrarMapa2(ultimoResultadoClusters[0].id);
+    }
     document.getElementById("resultado").innerText = "Cálculo actualizado.";
 }
+
 
 // ==========================================
 // 5. RENDERIZADO FILTRADO Y EVENTOS MAPA 1
