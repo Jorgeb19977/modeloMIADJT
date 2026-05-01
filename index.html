@@ -126,7 +126,7 @@
         .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-calcular:hover { background-color: #0056b3; }
 
-        /* --- ESTILO CRÍTICO PARA MAPA 2B (SOLUCIÓN ETIQUETAS BLANCAS) --- */
+        /* --- ESTILO PARA ETIQUETAS DEL MAPA 2B --- */
         .leaflet-tooltip.etiqueta-numero {
             background-color: transparent !important;
             border: none !important;
@@ -134,10 +134,10 @@
             color: #000 !important;
             font-weight: bold;
             font-size: 11px;
-            text-shadow: 1px 1px 0px #fff, -1px -1px 0px #fff, 1px -1px 0px #fff, -1px 1px 0px #fff; /* Borde blanco al texto para legibilidad */
+            text-shadow: 1px 1px 0px #fff, -1px -1px 0px #fff, 1px -1px 0px #fff, -1px 1px 0px #fff;
         }
         .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
-            display: none !important; /* Quita la flechita del cuadro */
+            display: none !important;
         }
     </style>
 </head>
@@ -157,9 +157,8 @@
             <p style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">Arrastra las variables para priorizar:</p>
             
             <div class="ranking-wrapper">
-                <div id="variables">
-                    <!-- Inyectado por JS -->
-                </div>
+                <!-- El contenedor de variables recibirá los nombres amigables desde JS -->
+                <div id="variables"></div>
                 
                 <div class="columna-numeros">
                     <div class="num-estatico imp">1</div>
@@ -243,7 +242,7 @@
                 <h3>Ficha de Detalle: Vivienda Seleccionada</h3>
                 <div id="detalle-vivienda">
                     <p style="color: #888; font-size: 0.85rem; font-style: italic;">
-                        Haz clic en un número del Mapa 3 o en el botón "Ver" de la tabla para abrir el detalle.
+                        Haz clic en un punto del Mapa de Referencia o en "Ver" en la tabla para más información.
                     </p>
                 </div>
             </div>
