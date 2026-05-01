@@ -20,10 +20,10 @@
 
         h2, h3 { margin: 0 0 10px 0; color: #333; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* --- ESTRUCTURA DE RANKING CORREGIDA --- */
+        /* --- ESTRUCTURA DE RANKING --- */
         .ranking-wrapper { 
             display: flex; 
-            gap: 8px; 
+            gap: 6px; 
             background: #f9f9f9; 
             padding: 10px; 
             border-radius: 8px; 
@@ -34,17 +34,19 @@
 
         #variables { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
 
+        /* --- COLUMNA DE NÚMEROS CON COLOR --- */
         .columna-numeros { display: flex; flex-direction: column; gap: 4px; user-select: none; }
 
         .num-estatico { 
             height: 32px; 
-            width: 20px;
+            width: 24px;
             display: flex; 
             align-items: center; 
             justify-content: center; 
             font-size: 0.75rem; 
             font-weight: bold; 
-            color: #aaa; 
+            color: white; /* Texto blanco para resaltar sobre el color */
+            border-radius: 3px;
         }
 
         .variable-item { 
@@ -62,7 +64,7 @@
             box-sizing: border-box;
         }
 
-        /* --- ETIQUETAS VERTICALES --- */
+        /* --- COLUMNA DE ETIQUETAS VERTICALES --- */
         .columna-etiquetas { display: flex; flex-direction: column; gap: 4px; }
 
         .grupo-etiqueta {
@@ -86,11 +88,12 @@
             letter-spacing: 1px;
         }
 
-        .imp { background-color: #28a745; }
-        .m-imp { background-color: #007bff; }
-        .des { background-color: #ffc107; color: #333; }
-        .p-imp { background-color: #6c757d; }
-        .irr { background-color: #dc3545; }
+        /* --- PALETA DE COLORES SINCRONIZADA --- */
+        .imp { background-color: #28a745; } /* Verde */
+        .m-imp { background-color: #007bff; } /* Azul */
+        .des { background-color: #ffc107; color: #333; } /* Amarillo (Texto oscuro para contraste) */
+        .p-imp { background-color: #6c757d; } /* Gris */
+        .irr { background-color: #dc3545; } /* Rojo */
         
         /* Personalización e Inputs */
         .puntos-input { width: 45px; border: 1px solid #ddd; border-radius: 3px; padding: 2px; font-size: 0.7rem; text-align: center; display: none; }
@@ -136,23 +139,38 @@
                 <button id="btn-reset" class="btn-extra" onclick="restablecerValores()" style="background-color: #ffc107; color: black;">RESTABLECER</button>
             </div>
             
-            <p style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">Prioriza arrastrando las variables:</p>
+            <p style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">Arrastra las variables para priorizar:</p>
             
-            <!-- RANKING CON COLUMNAS ESTÁTICAS -->
+            <!-- RANKING CON COLORES SINCRONIZADOS -->
             <div class="ranking-wrapper">
                 <div id="variables">
-                    <!-- JS inyectará aquí los items -->
+                    <!-- Aquí se inyectan las variables vía JS -->
                 </div>
                 
+                <!-- Columna de números con clases de color aplicadas por grupos de 3 -->
                 <div class="columna-numeros">
-                    <!-- Números del 1 al 15 -->
-                    <div class="num-estatico">1</div><div class="num-estatico">2</div><div class="num-estatico">3</div>
-                    <div class="num-estatico">4</div><div class="num-estatico">5</div><div class="num-estatico">6</div>
-                    <div class="num-estatico">7</div><div class="num-estatico">8</div><div class="num-estatico">9</div>
-                    <div class="num-estatico">10</div><div class="num-estatico">11</div><div class="num-estatico">12</div>
-                    <div class="num-estatico">13</div><div class="num-estatico">14</div><div class="num-estatico">15</div>
+                    <div class="num-estatico imp">1</div>
+                    <div class="num-estatico imp">2</div>
+                    <div class="num-estatico imp">3</div>
+                    
+                    <div class="num-estatico m-imp">4</div>
+                    <div class="num-estatico m-imp">5</div>
+                    <div class="num-estatico m-imp">6</div>
+                    
+                    <div class="num-estatico des">7</div>
+                    <div class="num-estatico des">8</div>
+                    <div class="num-estatico des">9</div>
+                    
+                    <div class="num-estatico p-imp">10</div>
+                    <div class="num-estatico p-imp">11</div>
+                    <div class="num-estatico p-imp">12</div>
+                    
+                    <div class="num-estatico irr">13</div>
+                    <div class="num-estatico irr">14</div>
+                    <div class="num-estatico irr">15</div>
                 </div>
 
+                <!-- Columna de etiquetas verticales con las mismas clases de color -->
                 <div class="columna-etiquetas">
                     <div class="grupo-etiqueta imp"><span>IMPRESCINDIBLE</span></div>
                     <div class="grupo-etiqueta m-imp"><span>IMPORTANTE</span></div>
