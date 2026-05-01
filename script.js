@@ -34,15 +34,18 @@ const pesosPredefinidos = [183, 179, 176, 88, 86, 84, 42, 41, 40, 20, 19, 18, 9,
 // 2. INICIALIZACIÓN
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
+    // Mapa 1: Exploración General
     map = L.map('map').setView([4.65, -74.1], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{z}/{x}/{y}.png').addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     capaPuntos = L.layerGroup().addTo(map);
     capaResaltado = L.layerGroup().addTo(map);
 
+    // Mapa 2A: Contexto (Izquierda)
     map2A = L.map('map2A', { zoomControl: false }).setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2A);
     capaPuntos2A = L.layerGroup().addTo(map2A);
 
+    // Mapa 2B: Selección Específica (Derecha)
     map2B = L.map('map2B').setView([4.65, -74.1], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2B);
     capaPuntos2B = L.layerGroup().addTo(map2B);
