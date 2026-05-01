@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Recomendación Vivienda Bogotá</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
@@ -45,7 +46,7 @@
             justify-content: center; 
             font-size: 0.75rem; 
             font-weight: bold; 
-            color: white; /* Texto blanco para resaltar sobre el color */
+            color: white; 
             border-radius: 3px;
         }
 
@@ -72,7 +73,7 @@
             align-items: center;
             justify-content: center;
             width: 24px;
-            height: 104px; /* (32px * 3) + (4px * 2) = 104px */
+            height: 104px; 
             border-radius: 4px;
             color: white;
             font-size: 0.55rem;
@@ -89,20 +90,20 @@
         }
 
         /* --- PALETA DE COLORES SINCRONIZADA --- */
-        .imp { background-color: #28a745; } /* Verde */
-        .m-imp { background-color: #007bff; } /* Azul */
-        .des { background-color: #ffc107; color: #333; } /* Amarillo (Texto oscuro para contraste) */
-        .p-imp { background-color: #6c757d; } /* Gris */
-        .irr { background-color: #dc3545; } /* Rojo */
+        .imp { background-color: #28a745; } 
+        .m-imp { background-color: #007bff; } 
+        .des { background-color: #ffc107; color: #333; } 
+        .p-imp { background-color: #6c757d; } 
+        .irr { background-color: #dc3545; } 
         
         /* Personalización e Inputs */
         .puntos-input { width: 45px; border: 1px solid #ddd; border-radius: 3px; padding: 2px; font-size: 0.7rem; text-align: center; display: none; }
         .modo-personalizado .puntos-input { display: block; }
-        .modo-personalizado .btn-extra { display: inline-block; }
         
         .btn-personalizar { width: 100%; margin-bottom: 5px; padding: 8px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.75rem; font-weight: bold; }
         .controles-extra { display: flex; gap: 5px; margin-bottom: 10px; }
         .btn-extra { flex: 1; padding: 5px; font-size: 0.65rem; border: none; border-radius: 3px; cursor: pointer; color: white; display: none; }
+        .modo-personalizado .btn-extra { display: inline-block; }
 
         .seccion-input { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
         .seccion-input input { width: 100%; margin-bottom: 8px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
@@ -124,6 +125,20 @@
         
         .btn-calcular { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-calcular:hover { background-color: #0056b3; }
+
+        /* --- ESTILO CRÍTICO PARA MAPA 2B (SOLUCIÓN ETIQUETAS BLANCAS) --- */
+        .leaflet-tooltip.etiqueta-numero {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #000 !important;
+            font-weight: bold;
+            font-size: 11px;
+            text-shadow: 1px 1px 0px #fff, -1px -1px 0px #fff, 1px -1px 0px #fff, -1px 1px 0px #fff; /* Borde blanco al texto para legibilidad */
+        }
+        .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
+            display: none !important; /* Quita la flechita del cuadro */
+        }
     </style>
 </head>
 <body>
@@ -141,36 +156,29 @@
             
             <p style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">Arrastra las variables para priorizar:</p>
             
-            <!-- RANKING CON COLORES SINCRONIZADOS -->
             <div class="ranking-wrapper">
                 <div id="variables">
-                    <!-- Aquí se inyectan las variables vía JS -->
+                    <!-- Inyectado por JS -->
                 </div>
                 
-                <!-- Columna de números con clases de color aplicadas por grupos de 3 -->
                 <div class="columna-numeros">
                     <div class="num-estatico imp">1</div>
                     <div class="num-estatico imp">2</div>
                     <div class="num-estatico imp">3</div>
-                    
                     <div class="num-estatico m-imp">4</div>
                     <div class="num-estatico m-imp">5</div>
                     <div class="num-estatico m-imp">6</div>
-                    
                     <div class="num-estatico des">7</div>
                     <div class="num-estatico des">8</div>
                     <div class="num-estatico des">9</div>
-                    
                     <div class="num-estatico p-imp">10</div>
                     <div class="num-estatico p-imp">11</div>
                     <div class="num-estatico p-imp">12</div>
-                    
                     <div class="num-estatico irr">13</div>
                     <div class="num-estatico irr">14</div>
                     <div class="num-estatico irr">15</div>
                 </div>
 
-                <!-- Columna de etiquetas verticales con las mismas clases de color -->
                 <div class="columna-etiquetas">
                     <div class="grupo-etiqueta imp"><span>IMPRESCINDIBLE</span></div>
                     <div class="grupo-etiqueta m-imp"><span>IMPORTANTE</span></div>
@@ -235,7 +243,7 @@
                 <h3>Ficha de Detalle: Vivienda Seleccionada</h3>
                 <div id="detalle-vivienda">
                     <p style="color: #888; font-size: 0.85rem; font-style: italic;">
-                        Haz clic en un punto del mapa o en un cluster para ver el detalle.
+                        Haz clic en un número del Mapa 3 o en el botón "Ver" de la tabla para abrir el detalle.
                     </p>
                 </div>
             </div>
